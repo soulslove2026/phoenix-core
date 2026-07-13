@@ -66,16 +66,22 @@ jobs:
         timeout-minutes: 10
         run: npm ci --no-audit --no-fund --loglevel=verbose
 
-      - name: Repository and type checks
-        run: npm run check
+      - name: Repository constitutional consistency
+        run: npm run check:repo
 
-      - name: Apply database migration
+      - name: Strict TypeScript checks
+        run: npm run typecheck
+
+      - name: Apply database migrations
         run: npm run migrate
 
-      - name: Automated tests
+      - name: Verify migration idempotency and checksums
+        run: npm run migrate
+
+      - name: Unit tests
         run: npm test
 
-      - name: Integration tests
+      - name: PostgreSQL integration tests
         run: npm run test:integration
 
       - name: Production build

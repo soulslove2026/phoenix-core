@@ -1,8 +1,11 @@
 {
-  "version": "3.3.0",
-  "release": "Phoenix Identity Slice 1 \u2014 Release 1",
+  "version": "3.3.2",
+  "release": "Phoenix Identity Slice 1 Constitutional Reconciliation and Hardening — Release 1",
+  "release_date": "2026-07-13",
   "status": "candidate",
   "slice": "Identity Slice 1",
+  "previous_verified_release": "3.3.1-identity-slice1-verification",
   "production_ready": false,
-  "requires_verification": true
+  "requires_verification": true,
+  "verification_gate": "GitHub Actions on Node.js 24 with PostgreSQL 18 and Docker build"
 }

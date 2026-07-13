@@ -1,6 +1,6 @@
 {
-  "repository_version": "3.3.0",
-  "file_count": 35,
+  "repository_version": "3.3.2",
+  "file_count": 42,
   "files": [
     ".env.example",
     ".github/workflows/ci.yml",
@@ -15,15 +15,19 @@
     "compose.yaml",
     "docs/CI_REGISTRY_HOTFIX.md",
     "docs/IDENTITY_SLICE1.md",
+    "docs/REPOSITORY_RECONCILIATION.md",
     "docs/RUNBOOK.md",
     "migrations/001_identity.sql",
+    "migrations/002_identity_hardening.sql",
     "package-lock.json",
     "package.json",
     "scripts/migrate.ts",
     "scripts/repository-check.mjs",
     "src/app.ts",
     "src/config.ts",
+    "src/identity/email.ts",
     "src/identity/password.ts",
+    "src/identity/rate-limit.ts",
     "src/identity/repository.ts",
     "src/identity/routes.ts",
     "src/identity/service.ts",
@@ -33,9 +37,12 @@
     "src/plugins/database.ts",
     "src/routes/system.ts",
     "test/config.test.ts",
+    "test/email.test.ts",
     "test/identity.service.test.ts",
     "test/integration/identity.integration.test.ts",
+    "test/rate-limit.test.ts",
     "test/system.test.ts",
+    "tsconfig.check.json",
     "tsconfig.json"
   ]
 }

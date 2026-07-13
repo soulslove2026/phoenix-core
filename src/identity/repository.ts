@@ -1,6 +1,12 @@
 import type { Pool } from "pg";
 import type { SessionRecord, UserRecord } from "./types.js";
 
+export class IdentityRepositoryConflictError extends Error {
+  constructor(public readonly conflict: "email") {
+    super(`identity_${conflict}_conflict`);
+  }
+}
+
 export interface IdentityRepository {
   createUser(input: { id: string; email: string; displayName: string; passwordHash: string }): Promise<UserRecord>;
   findUserByEmail(email: string): Promise<UserRecord | null>;
@@ -33,27 +39,48 @@ function rowToSession(row: Record<string, unknown>): SessionRecord {
   };
 }
 
+function postgresError(error: unknown): { code?: string; constraint?: string } {
+  if (typeof error !== "object" || error === null) return {};
+  const candidate = error as { code?: unknown; constraint?: unknown };
+  return {
+    ...(typeof candidate.code === "string" ? { code: candidate.code } : {}),
+    ...(typeof candidate.constraint === "string" ? { constraint: candidate.constraint } : {})
+  };
+}
+
 export class PostgresIdentityRepository implements IdentityRepository {
   constructor(private readonly pool: Pool) {}
 
   async createUser(input: { id: string; email: string; displayName: string; passwordHash: string }): Promise<UserRecord> {
-    const result = await this.pool.query(
-      `insert into identity_users (id, email, display_name, password_hash)
-       values ($1, $2, $3, $4)
-       returning *`,
-      [input.id, input.email, input.displayName, input.passwordHash]
-    );
-    return rowToUser(result.rows[0]);
+    try {
+      const result = await this.pool.query(
+        `insert into identity_users (id, email, display_name, password_hash)
+         values ($1, $2, $3, $4)
+         returning *`,
+        [input.id, input.email, input.displayName, input.passwordHash]
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (!row) throw new Error("identity_user_insert_returned_no_row");
+      return rowToUser(row);
+    } catch (error) {
+      const details = postgresError(error);
+      if (details.code === "23505" && details.constraint === "identity_users_email_unique") {
+        throw new IdentityRepositoryConflictError("email");
+      }
+      throw error;
+    }
   }
 
   async findUserByEmail(email: string): Promise<UserRecord | null> {
     const result = await this.pool.query("select * from identity_users where email = $1", [email]);
-    return result.rows[0] ? rowToUser(result.rows[0]) : null;
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    return row ? rowToUser(row) : null;
   }
 
   async findUserById(id: string): Promise<UserRecord | null> {
     const result = await this.pool.query("select * from identity_users where id = $1", [id]);
-    return result.rows[0] ? rowToUser(result.rows[0]) : null;
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    return row ? rowToUser(row) : null;
   }
 
   async createSession(input: { id: string; userId: string; tokenHash: string; expiresAt: string }): Promise<SessionRecord> {
@@ -63,7 +90,9 @@ export class PostgresIdentityRepository implements IdentityRepository {
        returning *`,
       [input.id, input.userId, input.tokenHash, input.expiresAt]
     );
-    return rowToSession(result.rows[0]);
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    if (!row) throw new Error("identity_session_insert_returned_no_row");
+    return rowToSession(row);
   }
 
   async findActiveSessionByTokenHash(tokenHash: string): Promise<SessionRecord | null> {
@@ -72,7 +101,8 @@ export class PostgresIdentityRepository implements IdentityRepository {
        where token_hash = $1 and revoked_at is null and expires_at > now()`,
       [tokenHash]
     );
-    return result.rows[0] ? rowToSession(result.rows[0]) : null;
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    return row ? rowToSession(row) : null;
   }
 
   async revokeSession(tokenHash: string): Promise<void> {

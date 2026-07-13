@@ -6,11 +6,12 @@ services:
       POSTGRES_PASSWORD: phoenix
       POSTGRES_DB: phoenix
     healthcheck:
-      test: ["CMD-SHELL","pg_isready -U phoenix"]
+      test: ["CMD-SHELL", "pg_isready -U phoenix"]
       interval: 5s
       timeout: 3s
       retries: 10
     volumes: ["phoenix_pg:/var/lib/postgresql/data"]
+
   phoenix-core:
     build: .
     depends_on:
@@ -21,8 +22,14 @@ services:
       PHOENIX_PORT: 3000
       PHOENIX_DATABASE_REQUIRED: "true"
       PHOENIX_DATABASE_URL: postgres://phoenix:phoenix@postgres:5432/phoenix
+      PHOENIX_IDENTITY_SESSION_TTL_SECONDS: 2592000
+      PHOENIX_IDENTITY_RATE_LIMIT_WINDOW_SECONDS: 900
+      PHOENIX_IDENTITY_REGISTER_MAX_ATTEMPTS: 5
+      PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS: 10
+    command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/src/main.js"]
     ports: ["3000:3000"]
     read_only: true
     tmpfs: ["/tmp"]
     security_opt: ["no-new-privileges:true"]
+
 volumes: { phoenix_pg: {} }

@@ -1,33 +1,32 @@
-# Identity Slice 1
+# Identity Slice 1 — Reconciled and Hardened
 
-## Scope
+## Delivered
 
-This slice introduces:
+- account registration and login;
+- strict normalized Internet email validation;
+- password hashing with Node.js `scrypt`;
+- opaque session issuance, lookup, expiry, and revocation;
+- PostgreSQL uniqueness and integrity constraints;
+- race-safe duplicate registration handling;
+- configurable bounded session lifetime;
+- bounded per-process registration/login throttling;
+- ordered, checksummed, transactional migration history;
+- `updated_at` database trigger;
+- unit and PostgreSQL integration tests;
+- JSON Schema and OpenAPI contracts;
+- repository consistency and checksum gates.
 
-- account registration;
-- email normalization and uniqueness;
-- password hashing using Node.js scrypt;
-- login;
-- opaque session tokens stored only as SHA-256 hashes;
-- authenticated current-user lookup;
-- logout and revocation;
-- PostgreSQL migrations;
-- unit and integration tests;
-- API contracts and OpenAPI generation.
+## Deferred to Identity Slice 2
 
-## Explicitly Deferred
+- email ownership verification;
+- password reset and account recovery;
+- MFA and passkeys;
+- breached-password screening;
+- distributed rate limiting;
+- device and session inventory;
+- session rotation and global logout;
+- risk-based authentication and anomaly detection.
 
-- email verification;
-- password reset;
-- MFA/passkeys;
-- social login;
-- device management;
-- rate-limit infrastructure;
-- session rotation;
-- account recovery;
-- administrator identity;
-- regional identity providers.
+## Release state
 
-## Security Boundary
-
-This release is Candidate until GitHub Actions passes with PostgreSQL migration, tests, build, and Docker verification.
+Identity Slice 1 v3.3.1 was verified. The v3.3.2 reconciliation and hardening release is Candidate until GitHub Actions passes on Node.js 24 with PostgreSQL 18 and Docker build verification.
