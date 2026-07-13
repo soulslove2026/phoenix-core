@@ -1,19 +1,15 @@
 name: CI
-
 on:
   push:
     branches: [main]
   pull_request:
-
 permissions:
   contents: read
-
 jobs:
   quality:
     name: quality
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18-alpine
@@ -21,71 +17,75 @@ jobs:
           POSTGRES_USER: phoenix
           POSTGRES_PASSWORD: phoenix
           POSTGRES_DB: phoenix
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U phoenix"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     env:
       PHOENIX_ENV: ci
       PHOENIX_DATABASE_REQUIRED: "true"
       PHOENIX_DATABASE_URL: postgres://phoenix:phoenix@127.0.0.1:5432/phoenix
+      PHOENIX_DOCUMENTATION_ENABLED: "false"
+      PHOENIX_REQUIRE_TLS: "false"
       NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
       NPM_CONFIG_PROGRESS: "false"
-      NPM_CONFIG_FETCH_RETRIES: "2"
-      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "1000"
-      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "10000"
-      NPM_CONFIG_FETCH_TIMEOUT: "60000"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
           registry-url: https://registry.npmjs.org/
-
-      - name: Verify lockfile registry
+      - name: Generate ephemeral CI secrets
         shell: bash
         run: |
-          if grep -R "applied-caas-gateway\|internal.api.openai.org" package-lock.json; then
-            echo "The lockfile contains a private or internal package registry URL."
-            exit 1
-          fi
+          python - <<'PY'
+          import base64, os
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              for name in ['PHOENIX_IDENTITY_TOKEN_PEPPER','PHOENIX_IDENTITY_NOTIFICATION_KEY','PHOENIX_IDENTITY_PRIVACY_KEY']:
+                  f.write(f"{name}={base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('=')}\n")
+          PY
+      - name: Verify public lockfile registry
+        run: |
+          ! grep -R "applied-caas-gateway\|internal.api.openai.org" package-lock.json
           grep -q '"https://registry.npmjs.org/' package-lock.json
-
       - name: Install dependencies
         timeout-minutes: 10
-        run: npm ci --no-audit --no-fund --loglevel=verbose
-
+        run: npm ci --ignore-scripts --no-audit --no-fund --loglevel=verbose
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Full dependency audit
+        run: npm audit --audit-level=high
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --sbom-format cyclonedx > phoenix-core-sbom.cdx.json
+      - name: Upload SBOM evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phoenix-core-sbom-${{ github.sha }}
+          path: phoenix-core-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Repository constitutional consistency
         run: npm run check:repo
-
+      - name: Security static checks
+        run: npm run security:check
       - name: Strict TypeScript checks
         run: npm run typecheck
-
       - name: Apply database migrations
         run: npm run migrate
-
       - name: Verify migration idempotency and checksums
         run: npm run migrate
-
       - name: Unit tests
         run: npm test
-
       - name: PostgreSQL integration tests
         run: npm run test:integration
-
       - name: Production build
         run: npm run build
-
       - name: Container build
         run: docker build --progress=plain -t phoenix-core:${{ github.sha }} .

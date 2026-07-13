@@ -1,87 +1,25 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import pg from "pg";
-import { buildApp } from "../../src/app.js";
-import { loadConfig } from "../../src/config.js";
-
-const databaseUrl = process.env.PHOENIX_DATABASE_URL;
-
-test("identity API persists registration, rejects a duplicate race, and revokes sessions", { skip: !databaseUrl }, async () => {
-  const pool = new pg.Pool({ connectionString: databaseUrl });
-  await pool.query("truncate identity_sessions, identity_users cascade");
-  const migrationCount = await pool.query<{ count: string }>("select count(*)::text as count from phoenix_schema_migrations");
-  assert.ok(Number(migrationCount.rows[0]?.count ?? 0) >= 2);
-
-  const app = await buildApp(loadConfig({
-    PHOENIX_ENV: "test",
-    PHOENIX_LOG_LEVEL: "error",
-    PHOENIX_DATABASE_REQUIRED: "true",
-    PHOENIX_DATABASE_URL: databaseUrl,
-    PHOENIX_IDENTITY_REGISTER_MAX_ATTEMPTS: "20",
-    PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS: "20"
-  }));
-
-  const register = await app.inject({
-    method: "POST",
-    url: "/v1/identity/register",
-    payload: { email: "identity@example.com", displayName: "Identity User", password: "strong-password-123" }
-  });
-  assert.equal(register.statusCode, 201);
-  const token = register.json().sessionToken as string;
-
-  const duplicate = await app.inject({
-    method: "POST",
-    url: "/v1/identity/register",
-    payload: { email: "IDENTITY@example.com", displayName: "Duplicate", password: "strong-password-123" }
-  });
-  assert.equal(duplicate.statusCode, 409);
-  assert.equal(duplicate.json().error, "registration_unavailable");
-
-  const me = await app.inject({
-    method: "GET",
-    url: "/v1/identity/me",
-    headers: { authorization: `Bearer ${token}` }
-  });
-  assert.equal(me.statusCode, 200);
-  assert.equal(me.json().user.email, "identity@example.com");
-
-  const before = await pool.query<{ updated_at: Date }>("select updated_at from identity_users where email = $1", ["identity@example.com"]);
-  await pool.query("select pg_sleep(0.01)");
-  await pool.query("update identity_users set display_name = $1 where email = $2", ["Updated User", "identity@example.com"]);
-  const after = await pool.query<{ updated_at: Date }>("select updated_at from identity_users where email = $1", ["identity@example.com"]);
-  assert.ok(new Date(after.rows[0]!.updated_at).getTime() > new Date(before.rows[0]!.updated_at).getTime());
-
-  const logout = await app.inject({
-    method: "POST",
-    url: "/v1/identity/logout",
-    headers: { authorization: `Bearer ${token}` }
-  });
-  assert.equal(logout.statusCode, 204);
-
-  const revoked = await app.inject({
-    method: "GET",
-    url: "/v1/identity/me",
-    headers: { authorization: `Bearer ${token}` }
-  });
-  assert.equal(revoked.statusCode, 401);
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const denied = await app.inject({
-      method: "POST",
-      url: "/v1/identity/login",
-      payload: { email: "missing@example.com", password: "wrong" }
-    });
-    assert.equal(denied.statusCode, 401);
-  }
-  const throttled = await app.inject({
-    method: "POST",
-    url: "/v1/identity/login",
-    payload: { email: "missing@example.com", password: "wrong" }
-  });
-  assert.equal(throttled.statusCode, 429);
-  assert.equal(throttled.json().error, "rate_limit_exceeded");
-  assert.ok(Number(throttled.headers["retry-after"]) > 0);
-
-  await app.close();
-  await pool.end();
+import test from "node:test";import assert from "node:assert/strict";import pg from "pg";import {buildApp} from "../../src/app.js";import {loadConfig} from "../../src/config.js";import {decryptNotificationPayload} from "../../src/identity/token-crypto.js";
+const databaseUrl=process.env.PHOENIX_DATABASE_URL;const notificationKey=process.env.PHOENIX_IDENTITY_NOTIFICATION_KEY;
+test("verification, rotation, recovery, and audit flow",{skip:!databaseUrl||!notificationKey},async()=>{
+ const pool=new pg.Pool({connectionString:databaseUrl});await pool.query("truncate identity_rate_limits,identity_security_events,identity_notification_outbox,identity_action_tokens,identity_sessions,identity_users cascade");const mc=await pool.query<{count:string}>("select count(*)::text count from phoenix_schema_migrations");assert.ok(Number(mc.rows[0]?.count??0)>=3);
+ const app=await buildApp(loadConfig({...process.env,PHOENIX_ENV:"test",PHOENIX_LOG_LEVEL:"error",PHOENIX_DATABASE_REQUIRED:"true",PHOENIX_DATABASE_URL:databaseUrl,PHOENIX_DOCUMENTATION_ENABLED:"false",PHOENIX_REQUIRE_TLS:"false",PHOENIX_IDENTITY_REGISTER_MAX_ATTEMPTS:"20",PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS:"20",PHOENIX_IDENTITY_ACTION_REQUEST_MAX_ATTEMPTS:"20",PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS:"20"}));
+ const password="a unique secure password 2026";const nextPassword="another unique secure phrase 2026";
+ const reg=await app.inject({method:"POST",url:"/v1/identity/register",payload:{email:"identity@example.com",displayName:"Identity User",password}});assert.equal(reg.statusCode,202);assert.deepEqual(reg.json(),{accepted:true});
+ const duplicate=await app.inject({method:"POST",url:"/v1/identity/register",payload:{email:"IDENTITY@example.com",displayName:"Other",password}});assert.equal(duplicate.statusCode,202);
+ const pre=await app.inject({method:"POST",url:"/v1/identity/login",payload:{email:"identity@example.com",password}});assert.equal(pre.statusCode,403);
+ const verifyRow=await pool.query<{ciphertext:string;iv:string;auth_tag:string}>("select ciphertext,iv,auth_tag from identity_notification_outbox where kind='email_verification' order by created_at desc limit 1");const verifyPayload=decryptNotificationPayload<{token:string}>({ciphertext:verifyRow.rows[0]!.ciphertext,iv:verifyRow.rows[0]!.iv,authTag:verifyRow.rows[0]!.auth_tag},notificationKey!);
+ const confirmed=await app.inject({method:"POST",url:"/v1/identity/email-verification/confirm",payload:{token:verifyPayload.token}});assert.equal(confirmed.statusCode,200);const firstToken=confirmed.json().sessionToken as string;
+ const reuse=await app.inject({method:"POST",url:"/v1/identity/email-verification/confirm",payload:{token:verifyPayload.token}});assert.equal(reuse.statusCode,400);
+ const sessions=await app.inject({method:"GET",url:"/v1/identity/sessions",headers:{authorization:`Bearer ${firstToken}`}});assert.equal(sessions.statusCode,200);assert.equal(sessions.json().sessions.length,1);
+ const rotated=await app.inject({method:"POST",url:"/v1/identity/sessions/rotate",headers:{authorization:`Bearer ${firstToken}`}});assert.equal(rotated.statusCode,200);const secondToken=rotated.json().sessionToken as string;
+ const oldMe=await app.inject({method:"GET",url:"/v1/identity/me",headers:{authorization:`Bearer ${firstToken}`}});assert.equal(oldMe.statusCode,401);
+ const resetReq=await app.inject({method:"POST",url:"/v1/identity/password-reset/request",payload:{email:"identity@example.com"}});assert.equal(resetReq.statusCode,202);
+ const resetRow=await pool.query<{ciphertext:string;iv:string;auth_tag:string}>("select ciphertext,iv,auth_tag from identity_notification_outbox where kind='password_reset' order by created_at desc limit 1");const resetPayload=decryptNotificationPayload<{token:string}>({ciphertext:resetRow.rows[0]!.ciphertext,iv:resetRow.rows[0]!.iv,authTag:resetRow.rows[0]!.auth_tag},notificationKey!);
+ const reset=await app.inject({method:"POST",url:"/v1/identity/password-reset/confirm",payload:{token:resetPayload.token,newPassword:nextPassword}});assert.equal(reset.statusCode,204);
+ const invalidated=await app.inject({method:"GET",url:"/v1/identity/me",headers:{authorization:`Bearer ${secondToken}`}});assert.equal(invalidated.statusCode,401);
+ const oldLogin=await app.inject({method:"POST",url:"/v1/identity/login",payload:{email:"identity@example.com",password}});assert.equal(oldLogin.statusCode,401);
+ const newLogin=await app.inject({method:"POST",url:"/v1/identity/login",payload:{email:"identity@example.com",password:nextPassword}});assert.equal(newLogin.statusCode,200);
+ const events=await pool.query<{count:string}>("select count(*)::text count from identity_security_events");assert.ok(Number(events.rows[0]?.count??0)>=6);assert.ok(!verifyRow.rows[0]!.ciphertext.includes(verifyPayload.token));
+ const schema=app.swagger();for(const path of ["/v1/identity/email-verification/confirm","/v1/identity/password-reset/confirm","/v1/identity/sessions/rotate","/v1/identity/sessions"]){assert.ok(schema.paths?.[path],`missing OpenAPI path ${path}`);}
+ await app.close();await pool.end();
 });

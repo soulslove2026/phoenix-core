@@ -1,62 +1,35 @@
 # Phoenix Core
 
-**Version:** `3.3.2`  
-**Release:** Identity Slice 1 Constitutional Reconciliation and Hardening — Release 1  
-**Status:** Candidate pending GitHub Actions verification  
-**Previous verified milestone:** Identity Slice 1 v3.3.1  
-**Production-ready:** No
+**Version:** `3.4.0`  
+**Milestone:** Identity Slice 2 — Release 1  
+**Status:** Candidate  
+**Production ready:** No
 
-Phoenix Core is a modular-monolith implementation using Node.js 24 LTS, TypeScript 5.9, Fastify 5, PostgreSQL 18, JSON Schema/OpenAPI, and OCI containers.
+Identity Slice 2 adds email ownership verification, password recovery, keyed opaque-token storage, encrypted notification outbox payloads, absolute and idle session expiry, session rotation and management, distributed PostgreSQL rate limiting, security audit events, stronger password hashing, TLS enforcement controls, CodeQL, dependency automation, and additional CI security gates.
 
-## Identity Slice 1
-
-Implemented endpoints:
+## Identity API
 
 - `POST /v1/identity/register`
+- `POST /v1/identity/email-verification/request`
+- `POST /v1/identity/email-verification/confirm`
 - `POST /v1/identity/login`
+- `POST /v1/identity/password-reset/request`
+- `POST /v1/identity/password-reset/confirm`
 - `GET /v1/identity/me`
+- `POST /v1/identity/sessions/rotate`
+- `GET /v1/identity/sessions`
+- `DELETE /v1/identity/sessions/:sessionId`
 - `POST /v1/identity/logout`
+- `POST /v1/identity/logout-all`
 
-The hardening release adds strict email validation, race-safe duplicate-account handling, configurable session lifetime, per-process authentication throttling, migration history with checksums and advisory locking, `updated_at` enforcement, explicit unit-test discovery, and repository consistency gates.
+Registration and recovery request responses are deliberately generic. Raw verification and recovery tokens are never stored; notification payloads are encrypted with AES-256-GCM before entering the outbox.
 
-## Local verification
+## Security Boundaries
 
-```bash
-npm ci
-PHOENIX_ENV=local npm run check
-PHOENIX_ENV=local npm test
-PHOENIX_ENV=local npm run build
-```
-
-Run PostgreSQL migrations:
-
-```bash
-PHOENIX_ENV=local \
-PHOENIX_DATABASE_REQUIRED=true \
-PHOENIX_DATABASE_URL=postgres://phoenix:phoenix@localhost:5432/phoenix \
-npm run migrate
-```
-
-Run the complete local stack:
-
-```bash
-docker compose up --build
-```
-
-Documentation is available at `/documentation`. Health and readiness endpoints are `/v1/system/health` and `/v1/system/ready`.
-
-## Security boundary
-
-Passwords are hashed with `scrypt`; opaque session tokens are generated from 256 bits of randomness and only SHA-256 token hashes are persisted. Invalid login responses are generic. Registration conflicts are race-safe. Authentication endpoints have a bounded per-process rate-limit baseline.
-
-The project must not be exposed as a production identity service until email ownership verification, recovery, MFA/passkeys, breached-password screening, distributed rate limiting, device/session management, and operational alerting are implemented and verified.
-
-## Repository integrity
-
-`npm run check:repo` enforces version synchronization, manifest coverage, checksums, current documentation language, test discovery, and public npm registry portability.
+This release does not claim public production readiness. Passkeys/WebAuthn, TOTP MFA, recovery codes, breached-password provider integration, a production notification worker, privileged administrator authentication, risk scoring, and external penetration testing remain required gates.
 
 ## Clean Snapshot Installation
 
-Release 2 is distributed as a complete clean repository snapshot. Preserve the hidden `.git` directory and remove all other existing repository files before copying this snapshot.
+Preserve `.git`, remove all other files in the local repository, and copy this complete snapshot. This prevents exact-manifest drift.
 
-Overlay-only copying is not supported because obsolete Slice 0 `.mjs` files can survive and violate the exact repository manifest.
+CI generates a CycloneDX SBOM, performs production and full dependency audits, runs CodeQL, and reviews pull-request dependency changes.

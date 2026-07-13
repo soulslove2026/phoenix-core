@@ -1,0 +1,4 @@
+import test from "node:test";import assert from "node:assert/strict";import {createOpaqueToken,decryptNotificationPayload,encryptNotificationPayload,hashOpaqueToken,privacyHash} from "../src/identity/token-crypto.js";
+const key=Buffer.alloc(32,7).toString("base64url");
+test("opaque tokens are prefixed, random, and keyed-hashed",()=>{const a=createOpaqueToken("phx_s"),b=createOpaqueToken("phx_s");assert.notEqual(a,b);assert.match(a,/^phx_s_/);assert.equal(hashOpaqueToken(a,key).length,64);assert.notEqual(hashOpaqueToken(a,key),hashOpaqueToken(a,Buffer.alloc(32,8).toString("base64url")));});
+test("notification payload uses authenticated encryption",()=>{const encrypted=encryptNotificationPayload({token:"secret",recipient:"u@example.com"},key);assert.ok(!encrypted.ciphertext.includes("secret"));assert.deepEqual(decryptNotificationPayload(encrypted,key),{token:"secret",recipient:"u@example.com"});assert.equal(privacyHash("value",key).length,64);});

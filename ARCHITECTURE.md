@@ -1,6 +1,6 @@
 # Phoenix Core Architecture
 
-Phoenix Core is a bounded-context modular monolith. Identity owns user credentials, account status, and sessions behind explicit application, HTTP, and PostgreSQL repository boundaries.
+Phoenix Core is a bounded-context modular monolith. Identity owns credentials, email ownership state, account status, recovery actions, sessions, abuse controls, notification-security records, and identity audit events behind explicit application, HTTP, and PostgreSQL boundaries.
 
 ## Runtime
 
@@ -13,8 +13,10 @@ Phoenix Core is a bounded-context modular monolith. Identity owns user credentia
 
 ## Identity boundaries
 
-HTTP routes delegate to `IdentityService`; persistence is isolated by `IdentityRepository`; PostgreSQL is authoritative truth. Plaintext passwords and session tokens never enter persistent storage.
+HTTP routes delegate to `IdentityService`; persistence is isolated by `IdentityRepository`; PostgreSQL is authoritative transactional truth. Plaintext passwords, bearer tokens, verification tokens, and reset tokens never enter persistent storage unprotected.
 
-## Evolution
+The primary identity database stores HMAC token hashes. Notification delivery payloads are separately protected with AES-256-GCM. Network and user-agent signals are HMAC-pseudonymized. PostgreSQL provides distributed atomic rate-limit buckets shared across application replicas.
 
-Rate limiting is intentionally implemented as a replaceable per-process baseline. A distributed implementation may replace it when horizontal-scale evidence exists. Email verification, recovery, MFA/passkeys, and device/session management belong to Identity Slice 2 and must preserve the same boundaries.
+## Security evolution
+
+Identity Slice 2 Release 1 implements email verification, recovery, hardened sessions, distributed abuse controls, and security events. Passkeys/WebAuthn, TOTP MFA, recovery codes, breached-password screening, risk scoring, privileged administrator isolation, and the production notification worker remain separate, mandatory gates.

@@ -1,13 +1,11 @@
 {
-  "version": "3.3.2",
-  "release": "Phoenix Identity Slice 1 Constitutional Reconciliation and Hardening \u2014 Release 2",
+  "version": "3.4.0",
+  "release": "Phoenix Identity Slice 2 \u2014 Release 1",
   "release_date": "2026-07-13",
   "status": "candidate",
-  "slice": "Identity Slice 1",
-  "previous_verified_release": "3.3.1-identity-slice1-verification",
+  "slice": "Identity Slice 2",
+  "security_baseline": "OWASP ASVS 5.0 Level 2 with selected Level 3 identity controls",
   "production_ready": false,
   "requires_verification": true,
-  "verification_gate": "GitHub Actions on Node.js 24 with PostgreSQL 18 and Docker build",
-  "distribution": "clean repository snapshot",
-  "replacement_required": true
+  "next_gate": "GitHub Actions, CodeQL, recovery/session abuse review, and documentation integrity"
 }

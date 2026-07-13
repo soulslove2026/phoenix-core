@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "private": true,
-  "description": "Phoenix Identity Slice 1 constitutional reconciliation and hardening",
+  "description": "Phoenix Identity Slice 2: verification, recovery, and session hardening",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -13,7 +13,7 @@
     "start": "node dist/src/main.js",
     "typecheck": "tsc -p tsconfig.check.json --noEmit",
     "check:repo": "node scripts/repository-check.mjs",
-    "check": "npm run typecheck && npm run check:repo",
+    "check": "npm run typecheck && npm run check:repo && npm run security:check",
     "test": "tsx --test test/*.test.ts",
     "test:integration": "tsx --test test/integration/*.test.ts",
     "test:all": "npm test && npm run test:integration",
@@ -21,7 +21,8 @@
     "audit": "npm audit --omit=dev",
     "verify": "npm run check && npm test && npm run build",
     "migrate": "tsx scripts/migrate.ts",
-    "migrate:compiled": "node dist/scripts/migrate.js"
+    "migrate:compiled": "node dist/scripts/migrate.js",
+    "security:check": "node scripts/security-check.mjs"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",
