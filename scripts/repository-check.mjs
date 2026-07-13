@@ -49,7 +49,15 @@ function walk(directory = ".") {
 }
 const actualFiles = walk().filter((file) => file !== "CHECKSUMS.sha256").sort();
 const listedFiles = [...manifest.files].sort();
-if (JSON.stringify(actualFiles) !== JSON.stringify(listedFiles)) fail("FILE_MANIFEST does not exactly match repository files");
+if (JSON.stringify(actualFiles) !== JSON.stringify(listedFiles)) {
+  const actual = new Set(actualFiles);
+  const listed = new Set(listedFiles);
+  const extra = actualFiles.filter((file) => !listed.has(file));
+  const missing = listedFiles.filter((file) => !actual.has(file));
+  if (extra.length) console.error(`Unmanaged repository files:\n- ${extra.join("\n- ")}`);
+  if (missing.length) console.error(`Manifest entries missing from repository:\n- ${missing.join("\n- ")}`);
+  fail("FILE_MANIFEST does not exactly match repository files");
+}
 if (manifest.file_count !== listedFiles.length) fail("FILE_MANIFEST file_count is incorrect");
 
 for (const line of read("CHECKSUMS.sha256").trim().split("\n")) {

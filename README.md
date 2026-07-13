@@ -54,3 +54,9 @@ The project must not be exposed as a production identity service until email own
 ## Repository integrity
 
 `npm run check:repo` enforces version synchronization, manifest coverage, checksums, current documentation language, test discovery, and public npm registry portability.
+
+## Clean Snapshot Installation
+
+Release 2 is distributed as a complete clean repository snapshot. Preserve the hidden `.git` directory and remove all other existing repository files before copying this snapshot.
+
+Overlay-only copying is not supported because obsolete Slice 0 `.mjs` files can survive and violate the exact repository manifest.

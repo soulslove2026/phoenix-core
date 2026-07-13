@@ -1,6 +1,6 @@
 {
   "repository_version": "3.3.2",
-  "file_count": 42,
+  "file_count": 43,
   "files": [
     ".env.example",
     ".github/workflows/ci.yml",
@@ -15,6 +15,7 @@
     "compose.yaml",
     "docs/CI_REGISTRY_HOTFIX.md",
     "docs/IDENTITY_SLICE1.md",
+    "docs/RELEASE2_CLEAN_SNAPSHOT.md",
     "docs/REPOSITORY_RECONCILIATION.md",
     "docs/RUNBOOK.md",
     "migrations/001_identity.sql",
