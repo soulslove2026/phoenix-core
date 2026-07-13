@@ -25,3 +25,7 @@ Endpoints:
 - `/documentation`
 
 This release contains no Identity domain logic. Identity Slice 1 remains gated on successful CI after migration.
+
+## CI Registry Integrity
+
+The committed lockfile must resolve packages only through the public npm registry. CI fails immediately if a private build-environment registry URL is detected.

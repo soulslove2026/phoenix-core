@@ -1,6 +1,6 @@
 {
   "name": "@phoenix/core",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "private": true,
   "description": "Phoenix Core production-stack migration baseline",
   "type": "module",
