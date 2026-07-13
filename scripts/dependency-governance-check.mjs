@@ -69,4 +69,21 @@ for (const required of [
   if (!review.includes(required)) fail(`Dependency Review policy missing: ${required}`);
 }
 
+
+const ciWorkflow = fs.readFileSync(".github/workflows/ci.yml", "utf8");
+for (const required of [
+  'SBOM_PATH="${{ runner.temp }}/phoenix-core-sbom.cdx.json"',
+  'path: ${{ runner.temp }}/phoenix-core-sbom.cdx.json',
+  "Verify repository remained clean after evidence generation",
+  "git status --porcelain --untracked-files=all",
+]) {
+  if (!ciWorkflow.includes(required)) {
+    fail(`CI evidence isolation control missing: ${required}`);
+  }
+}
+if (ciWorkflow.includes("> phoenix-core-sbom.cdx.json") ||
+    ciWorkflow.includes("path: phoenix-core-sbom.cdx.json")) {
+  fail("Generated SBOM evidence must not be written inside the repository");
+}
+
 if (!process.exitCode) console.log("Dependency governance checks passed.");

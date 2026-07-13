@@ -1,6 +1,6 @@
 {
-  "repository_version": "3.4.1",
-  "file_count": 55,
+  "repository_version": "3.4.2",
+  "file_count": 56,
   "files": [
     ".env.example",
     ".github/dependabot.yml",
@@ -16,6 +16,7 @@
     "SECURITY.md",
     "VERSION.json",
     "compose.yaml",
+    "docs/CI_ARTIFACT_ISOLATION.md",
     "docs/CI_REGISTRY_HOTFIX.md",
     "docs/DEPENDENCY_GOVERNANCE.md",
     "docs/DEPENDENCY_UPDATE_RUNBOOK.md",

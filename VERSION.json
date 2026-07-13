@@ -1,6 +1,6 @@
 {
-  "version": "3.4.1",
-  "release": "Phoenix Dependency Governance and Actions Runtime Hotfix \u2014 Release 1",
+  "version": "3.4.2",
+  "release": "Phoenix CI Artifact Isolation Hotfix \u2014 Release 1",
   "release_date": "2026-07-13",
   "status": "candidate",
   "slice": "Identity Slice 2",
@@ -9,5 +9,6 @@
   "requires_verification": true,
   "next_gate": "GitHub Actions, CodeQL, recovery/session abuse review, and documentation integrity",
   "distribution": "clean repository snapshot",
-  "replacement_required": true
+  "replacement_required": true,
+  "scope": "Isolate generated CI security evidence from governed repository state"
 }

@@ -1,6 +1,6 @@
 # Phoenix Core
 
-**Version:** `3.4.1`  
+**Version:** `3.4.2`  
 **Milestone:** Identity Slice 2 — Release 1  
 **Status:** Candidate  
 **Production ready:** No
@@ -37,3 +37,7 @@ CI generates a CycloneDX SBOM, performs production and full dependency audits, r
 ## Dependency Governance
 
 Routine automatic version-update pull requests are disabled. Dependabot security alerts and security updates remain enabled. Planned upgrades are delivered through reviewed maintenance releases with synchronized manifests, checksums, audits, SBOM evidence, tests, CodeQL, and documentation.
+
+## CI Evidence Isolation
+
+CycloneDX SBOMs and other generated security evidence are written to the GitHub runner temporary directory, not the governed repository workspace. CI checks repository authority before generation and confirms that the working tree remains clean afterward.
