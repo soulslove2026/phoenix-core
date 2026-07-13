@@ -1,11 +1,28 @@
 services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: phoenix
+      POSTGRES_PASSWORD: phoenix
+      POSTGRES_DB: phoenix
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U phoenix"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes: ["phoenix_pg:/var/lib/postgresql/data"]
   phoenix-core:
     build: .
+    depends_on:
+      postgres: { condition: service_healthy }
     environment:
       PHOENIX_ENV: local-compose
       PHOENIX_HOST: 0.0.0.0
       PHOENIX_PORT: 3000
+      PHOENIX_DATABASE_REQUIRED: "true"
+      PHOENIX_DATABASE_URL: postgres://phoenix:phoenix@postgres:5432/phoenix
     ports: ["3000:3000"]
     read_only: true
-    tmpfs: [/tmp]
+    tmpfs: ["/tmp"]
     security_opt: ["no-new-privileges:true"]
+volumes: { phoenix_pg: {} }

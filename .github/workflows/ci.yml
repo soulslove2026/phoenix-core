@@ -1,18 +1,33 @@
 name: CI
 on:
-  push:
-    branches: [main]
+  push: { branches: [main] }
   pull_request:
-permissions:
-  contents: read
+permissions: { contents: read }
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: phoenix
+          POSTGRES_PASSWORD: phoenix
+          POSTGRES_DB: phoenix
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U phoenix" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PHOENIX_ENV: ci
+      PHOENIX_DATABASE_REQUIRED: "true"
+      PHOENIX_DATABASE_URL: postgres://phoenix:phoenix@127.0.0.1:5432/phoenix
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: npm run build
       - run: docker build -t phoenix-core:${{ github.sha }} .

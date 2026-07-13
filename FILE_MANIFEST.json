@@ -1,6 +1,6 @@
 {
-  "repository_version": "3.0.0",
-  "file_count": 18,
+  "repository_version": "3.2.0",
+  "file_count": 23,
   "files": [
     ".env.example",
     ".github/workflows/ci.yml",
@@ -8,17 +8,22 @@
     ".nvmrc",
     "ARCHITECTURE.md",
     "Dockerfile",
+    "FILE_MANIFEST.json",
     "README.md",
     "SECURITY.md",
     "VERSION.json",
     "compose.yaml",
     "docs/RUNBOOK.md",
+    "package-lock.json",
     "package.json",
-    "scripts/check.mjs",
-    "src/config.mjs",
-    "src/logger.mjs",
-    "src/server.mjs",
-    "test/config.test.mjs",
-    "test/server.test.mjs"
+    "scripts/repository-check.mjs",
+    "src/app.ts",
+    "src/config.ts",
+    "src/main.ts",
+    "src/plugins/database.ts",
+    "src/routes/system.ts",
+    "test/config.test.ts",
+    "test/system.test.ts",
+    "tsconfig.json"
   ]
 }

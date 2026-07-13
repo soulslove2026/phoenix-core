@@ -1,16 +1,33 @@
 {
-  "name": "@phoenix/core-bootstrap",
-  "version": "3.0.0",
+  "name": "@phoenix/core",
+  "version": "3.2.0",
   "private": true,
-  "description": "Phoenix Core Slice 0 executable bootstrap",
+  "description": "Phoenix Core production-stack migration baseline",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24 <25"
   },
   "scripts": {
-    "start": "node src/server.mjs",
-    "test": "node --test",
-    "check": "node scripts/check.mjs",
-    "audit": "npm audit --omit=dev"
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "check": "tsc --noEmit && node scripts/repository-check.mjs",
+    "test": "tsx --test test/**/*.test.ts",
+    "test:coverage": "tsx --test --experimental-test-coverage test/**/*.test.ts",
+    "audit": "npm audit --omit=dev",
+    "verify": "npm run check && npm test && npm run build"
+  },
+  "dependencies": {
+    "@fastify/swagger": "9.8.0",
+    "@fastify/swagger-ui": "6.1.0",
+    "fastify": "5.10.0",
+    "fastify-plugin": "5.1.0",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/pg": "8.15.5",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3"
   }
 }

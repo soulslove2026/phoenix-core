@@ -1,3 +1,5 @@
 # Architecture
 
-Slice 0 is one stateless HTTP process using only the Node.js standard library. It proves lifecycle, configuration, health, readiness, logging, testing, CI, and container execution. It does not establish the final backend framework.
+Phoenix Core remains a modular monolith baseline. This migration introduces the ratified runtime and framework without adding product-domain behavior.
+
+The first bounded context added after this release will be Identity, behind explicit application and persistence boundaries.

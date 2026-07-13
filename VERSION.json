@@ -1,8 +1,13 @@
 {
-  "version": "3.0.0",
-  "release": "Phoenix Core Bootstrap \u2014 Release 1",
-  "slice": "Slice 0",
+  "version": "3.2.0",
+  "release": "Phoenix Core Stack Migration \u2014 Release 1",
   "status": "candidate",
   "production_ready": false,
-  "documentation_version": "3.0.0-core-bootstrap-r1"
+  "identity_slice_started": false,
+  "stack": {
+    "node": "24 LTS",
+    "typescript": "5.9",
+    "fastify": "5",
+    "postgresql": "18"
+  }
 }

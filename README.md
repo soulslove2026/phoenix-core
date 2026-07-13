@@ -1,23 +1,27 @@
 # Phoenix Core
 
-Slice 0 executable bootstrap. No product capability is implemented.
+Production-stack migration baseline for Phoenix Core.
 
-## Run
+## Stack
 
-```bash
-PHOENIX_ENV=local npm run check
-PHOENIX_ENV=local npm test
-PHOENIX_ENV=local npm start
-```
+- Node.js 24 LTS
+- TypeScript 5.9
+- Fastify 5
+- PostgreSQL 18 readiness
+- JSON Schema/OpenAPI
 
-Health: `http://127.0.0.1:3000/health`
-Readiness: `http://127.0.0.1:3000/ready`
-
-## Container
+## Local verification
 
 ```bash
-docker build -t phoenix-core:3.0.0 .
-docker run --rm -p 3000:3000 phoenix-core:3.0.0
+npm ci
+PHOENIX_ENV=local npm run verify
+PHOENIX_ENV=local npm run dev
 ```
 
-The backend stack remains provisional until the decision preceding Identity Slice 1.
+Endpoints:
+
+- `/v1/system/health`
+- `/v1/system/ready`
+- `/documentation`
+
+This release contains no Identity domain logic. Identity Slice 1 remains gated on successful CI after migration.
