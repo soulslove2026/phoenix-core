@@ -1,6 +1,6 @@
 {
   "name": "@phoenix/core",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "private": true,
   "description": "Phoenix Identity Slice 2: verification, recovery, and session hardening",
   "type": "module",
@@ -22,7 +22,8 @@
     "verify": "npm run check && npm test && npm run build",
     "migrate": "tsx scripts/migrate.ts",
     "migrate:compiled": "node dist/scripts/migrate.js",
-    "security:check": "node scripts/security-check.mjs"
+    "security:check": "node scripts/security-check.mjs && node scripts/dependency-governance-check.mjs",
+    "dependencies:policy": "node scripts/dependency-governance-check.mjs"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",

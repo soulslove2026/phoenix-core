@@ -1,6 +1,6 @@
 # Phoenix Core
 
-**Version:** `3.4.0`  
+**Version:** `3.4.1`  
 **Milestone:** Identity Slice 2 — Release 1  
 **Status:** Candidate  
 **Production ready:** No
@@ -33,3 +33,7 @@ This release does not claim public production readiness. Passkeys/WebAuthn, TOTP
 Preserve `.git`, remove all other files in the local repository, and copy this complete snapshot. This prevents exact-manifest drift.
 
 CI generates a CycloneDX SBOM, performs production and full dependency audits, runs CodeQL, and reviews pull-request dependency changes.
+
+## Dependency Governance
+
+Routine automatic version-update pull requests are disabled. Dependabot security alerts and security updates remain enabled. Planned upgrades are delivered through reviewed maintenance releases with synchronized manifests, checksums, audits, SBOM evidence, tests, CodeQL, and documentation.

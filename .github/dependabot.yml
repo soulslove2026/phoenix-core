@@ -1,16 +1,23 @@
 version: 2
+
+# Routine version-update pull requests are disabled. Phoenix accepts
+# Dependabot security alerts and security-update pull requests, while
+# planned upgrades are handled in reviewed maintenance releases.
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      production-dependencies:
-        dependency-type: production
-      development-dependencies:
-        dependency-type: development
-  - package-ecosystem: github-actions
+      interval: "monthly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "security(deps)"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: weekly
+      interval: "monthly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "security(actions)"
+      include: "scope"

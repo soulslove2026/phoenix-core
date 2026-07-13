@@ -35,13 +35,16 @@ jobs:
       NPM_CONFIG_PROGRESS: "false"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
           registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
       - name: Generate ephemeral CI secrets
         shell: bash
         run: |
@@ -65,7 +68,7 @@ jobs:
       - name: Generate CycloneDX SBOM
         run: npm sbom --sbom-format cyclonedx > phoenix-core-sbom.cdx.json
       - name: Upload SBOM evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: phoenix-core-sbom-${{ github.sha }}
           path: phoenix-core-sbom.cdx.json
