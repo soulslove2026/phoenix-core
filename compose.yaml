@@ -1,0 +1,11 @@
+services:
+  phoenix-core:
+    build: .
+    environment:
+      PHOENIX_ENV: local-compose
+      PHOENIX_HOST: 0.0.0.0
+      PHOENIX_PORT: 3000
+    ports: ["3000:3000"]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]

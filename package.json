@@ -1,0 +1,16 @@
+{
+  "name": "@phoenix/core-bootstrap",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Phoenix Core Slice 0 executable bootstrap",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test",
+    "check": "node scripts/check.mjs",
+    "audit": "npm audit --omit=dev"
+  }
+}
