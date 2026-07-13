@@ -4,6 +4,9 @@ import swaggerUi from "@fastify/swagger-ui";
 import { loadConfig, type AppConfig } from "./config.js";
 import { databasePlugin } from "./plugins/database.js";
 import { systemRoutes } from "./routes/system.js";
+import { IdentityService } from "./identity/service.js";
+import { PostgresIdentityRepository } from "./identity/repository.js";
+import { identityRoutes } from "./identity/routes.js";
 
 declare module "fastify" { interface FastifyInstance { config: AppConfig } }
 
@@ -21,10 +24,14 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
     reply.header("x-content-type-options","nosniff").header("x-frame-options","DENY").header("referrer-policy","no-referrer").header("cache-control","no-store");
   });
   app.addHook("onResponse", async (request, reply) => app.log.info({requestId:request.id,method:request.method,path:request.url,statusCode:reply.statusCode},"request.completed"));
-  await app.register(swagger,{openapi:{info:{title:"Phoenix Core API",version:"3.2.0"}}});
+  await app.register(swagger,{openapi:{info:{title:"Phoenix Core API",version:"3.3.0"}}});
   await app.register(swaggerUi,{routePrefix:"/documentation"});
   await app.register(databasePlugin,{config});
   await app.register(systemRoutes,{prefix:"/v1/system"});
+  if (app.database.pool) {
+    const identityService = new IdentityService(new PostgresIdentityRepository(app.database.pool));
+    await app.register(identityRoutes,{prefix:"/v1/identity",service:identityService});
+  }
   app.setNotFoundHandler(async (request, reply) => reply.code(404).send({error:"not_found",requestId:request.id}));
   app.setErrorHandler(async (error, request, reply) => {
     request.log.error({err:error,requestId:request.id},"request.failed");

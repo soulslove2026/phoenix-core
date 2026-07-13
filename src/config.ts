@@ -25,5 +25,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const databaseRequired = env.PHOENIX_DATABASE_REQUIRED === "true";
   const databaseUrl = env.PHOENIX_DATABASE_URL?.trim();
   if (databaseRequired && !databaseUrl) throw new Error("PHOENIX_DATABASE_URL is required when database is required");
-  return Object.freeze({serviceName:"phoenix-core",version:"3.2.0",environment,host:env.PHOENIX_HOST?.trim()||"127.0.0.1",port,logLevel,databaseRequired,...(databaseUrl?{databaseUrl}:{})});
+  return Object.freeze({serviceName:"phoenix-core",version:"3.3.0",environment,host:env.PHOENIX_HOST?.trim()||"127.0.0.1",port,logLevel,databaseRequired,...(databaseUrl?{databaseUrl}:{})});
 }

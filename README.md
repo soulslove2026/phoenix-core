@@ -29,3 +29,16 @@ This release contains no Identity domain logic. Identity Slice 1 remains gated o
 ## CI Registry Integrity
 
 The committed lockfile must resolve packages only through the public npm registry. CI fails immediately if a private build-environment registry URL is detected.
+
+## Identity API
+
+- `POST /v1/identity/register`
+- `POST /v1/identity/login`
+- `GET /v1/identity/me`
+- `POST /v1/identity/logout`
+
+Apply the database migration before running with PostgreSQL:
+
+```bash
+npm run migrate
+```

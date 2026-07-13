@@ -1,14 +1,8 @@
 {
-  "version": "3.2.1",
-  "release": "Phoenix Stack Migration CI Registry Hotfix",
+  "version": "3.3.0",
+  "release": "Phoenix Identity Slice 1 \u2014 Release 1",
   "status": "candidate",
+  "slice": "Identity Slice 1",
   "production_ready": false,
-  "identity_slice_started": false,
-  "stack": {
-    "node": "24 LTS",
-    "typescript": "5.9",
-    "fastify": "5",
-    "postgresql": "18"
-  },
-  "hotfix": "Replace internal package registry URLs with public npm registry URLs"
+  "requires_verification": true
 }

@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "private": true,
-  "description": "Phoenix Core production-stack migration baseline",
+  "description": "Phoenix Core Identity Slice 1",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -15,7 +15,9 @@
     "test": "tsx --test test/**/*.test.ts",
     "test:coverage": "tsx --test --experimental-test-coverage test/**/*.test.ts",
     "audit": "npm audit --omit=dev",
-    "verify": "npm run check && npm test && npm run build"
+    "verify": "npm run check && npm test && npm run build",
+    "migrate": "tsx scripts/migrate.ts",
+    "test:integration": "tsx --test test/integration/**/*.test.ts"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",
