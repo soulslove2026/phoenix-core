@@ -16,7 +16,7 @@ services:
     build: .
     depends_on:
       postgres: { condition: service_healthy }
-    environment:
+    environment: &phoenix-env
       PHOENIX_ENV: local-compose
       PHOENIX_HOST: 0.0.0.0
       PHOENIX_PORT: 3000
@@ -25,16 +25,12 @@ services:
       PHOENIX_IDENTITY_TOKEN_PEPPER: ${PHOENIX_IDENTITY_TOKEN_PEPPER:?required}
       PHOENIX_IDENTITY_NOTIFICATION_KEY: ${PHOENIX_IDENTITY_NOTIFICATION_KEY:?required}
       PHOENIX_IDENTITY_PRIVACY_KEY: ${PHOENIX_IDENTITY_PRIVACY_KEY:?required}
+      PHOENIX_IDENTITY_MFA_KEY: ${PHOENIX_IDENTITY_MFA_KEY:?required}
+      PHOENIX_IDENTITY_PASSWORD_BREACH_MODE: ${PHOENIX_IDENTITY_PASSWORD_BREACH_MODE:-disabled}
+      PHOENIX_IDENTITY_WEBAUTHN_RP_NAME: ${PHOENIX_IDENTITY_WEBAUTHN_RP_NAME:-Phoenix}
+      PHOENIX_IDENTITY_WEBAUTHN_RP_ID: ${PHOENIX_IDENTITY_WEBAUTHN_RP_ID:-localhost}
+      PHOENIX_IDENTITY_WEBAUTHN_ORIGINS: ${PHOENIX_IDENTITY_WEBAUTHN_ORIGINS:-http://localhost:3000}
       PHOENIX_REQUIRE_TLS: "false"
-      PHOENIX_IDENTITY_SESSION_ABSOLUTE_TTL_SECONDS: 2592000
-      PHOENIX_IDENTITY_SESSION_IDLE_TTL_SECONDS: 43200
-      PHOENIX_IDENTITY_VERIFICATION_TTL_SECONDS: 86400
-      PHOENIX_IDENTITY_PASSWORD_RESET_TTL_SECONDS: 900
-      PHOENIX_IDENTITY_RATE_LIMIT_WINDOW_SECONDS: 900
-      PHOENIX_IDENTITY_REGISTER_MAX_ATTEMPTS: 5
-      PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS: 10
-      PHOENIX_IDENTITY_ACTION_REQUEST_MAX_ATTEMPTS: 5
-      PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS: 10
     command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/src/main.js"]
     ports: ["3000:3000"]
     read_only: true
@@ -42,6 +38,23 @@ services:
     tmpfs: ["/tmp"]
     cap_drop: ["ALL"]
     pids_limit: 200
+    security_opt: ["no-new-privileges:true"]
+
+  notification-worker:
+    build: .
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *phoenix-env
+      PHOENIX_NOTIFICATION_PROVIDER_URL: ${PHOENIX_NOTIFICATION_PROVIDER_URL:?required}
+      PHOENIX_NOTIFICATION_PROVIDER_TOKEN: ${PHOENIX_NOTIFICATION_PROVIDER_TOKEN:?required}
+      PHOENIX_NOTIFICATION_FROM_EMAIL: ${PHOENIX_NOTIFICATION_FROM_EMAIL:?required}
+    command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/scripts/notification-worker.js"]
+    read_only: true
+    init: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    pids_limit: 100
     security_opt: ["no-new-privileges:true"]
 
 volumes: { phoenix_pg: {} }

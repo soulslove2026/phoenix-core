@@ -1,253 +1,72 @@
 import { createHash } from "node:crypto";
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type { IdentityRateLimiter } from "./distributed-rate-limit.js";
 import { IdentityError, IdentityService } from "./service.js";
 import { privacyHash } from "./token-crypto.js";
 import type { SecurityContext } from "./types.js";
 
-const errorSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["error", "requestId"],
-  properties: { error: { type: "string" }, requestId: { type: "string" } }
-} as const;
+const errorSchema = { type:"object", additionalProperties:false, required:["error","requestId"], properties:{error:{type:"string"},requestId:{type:"string"}} } as const;
+const acceptedSchema = { type:"object", additionalProperties:false, required:["accepted"], properties:{accepted:{type:"boolean",const:true}} } as const;
+const userSchema = { type:"object", additionalProperties:false, required:["id","email","displayName","status","emailVerified","createdAt"], properties:{id:{type:"string",format:"uuid"},email:{type:"string"},displayName:{type:"string"},status:{type:"string",enum:["active","disabled"]},emailVerified:{type:"boolean"},createdAt:{type:"string",format:"date-time"}} } as const;
+const identitySchema = { type:"object", additionalProperties:false, required:["user","sessionToken"], properties:{user:userSchema,sessionToken:{type:"string",minLength:40}} } as const;
+const mfaChallengeSchema = { type:"object", additionalProperties:false, required:["mfaRequired","transactionToken","methods"], properties:{mfaRequired:{type:"boolean",const:true},transactionToken:{type:"string",minLength:40},methods:{type:"array",items:{type:"string",enum:["totp","recovery_code"]},minItems:1}} } as const;
+const sessionSchema = { type:"object",additionalProperties:false,required:["id","current","createdAt","lastSeenAt","idleExpiresAt","expiresAt"],properties:{id:{type:"string",format:"uuid"},current:{type:"boolean"},createdAt:{type:"string",format:"date-time"},lastSeenAt:{type:"string",format:"date-time"},idleExpiresAt:{type:"string",format:"date-time"},expiresAt:{type:"string",format:"date-time"}} } as const;
+const passkeySchema = { type:"object",additionalProperties:false,required:["id","label","deviceType","backedUp","transports","createdAt","lastUsedAt"],properties:{id:{type:"string",format:"uuid"},label:{type:"string"},deviceType:{type:"string",enum:["singleDevice","multiDevice"]},backedUp:{type:"boolean"},transports:{type:"array",items:{type:"string"}},createdAt:{type:"string",format:"date-time"},lastUsedAt:{anyOf:[{type:"string",format:"date-time"},{type:"null"}]}} } as const;
+const challengeResponseSchema = { type:"object",additionalProperties:false,required:["challengeId","options","expiresAt"],properties:{challengeId:{type:"string",format:"uuid"},options:{type:"object",additionalProperties:true},expiresAt:{type:"string",format:"date-time"}} } as const;
 
-const acceptedSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["accepted"],
-  properties: { accepted: { type: "boolean", const: true } }
-} as const;
-
-const userSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["id", "email", "displayName", "status", "emailVerified", "createdAt"],
-  properties: {
-    id: { type: "string", format: "uuid" },
-    email: { type: "string" },
-    displayName: { type: "string" },
-    status: { type: "string", enum: ["active", "disabled"] },
-    emailVerified: { type: "boolean" },
-    createdAt: { type: "string", format: "date-time" }
-  }
-} as const;
-
-const identitySchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["user", "sessionToken"],
-  properties: { user: userSchema, sessionToken: { type: "string", minLength: 40 } }
-} as const;
-
-const sessionSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["id", "current", "createdAt", "lastSeenAt", "idleExpiresAt", "expiresAt"],
-  properties: {
-    id: { type: "string", format: "uuid" },
-    current: { type: "boolean" },
-    createdAt: { type: "string", format: "date-time" },
-    lastSeenAt: { type: "string", format: "date-time" },
-    idleExpiresAt: { type: "string", format: "date-time" },
-    expiresAt: { type: "string", format: "date-time" }
-  }
-} as const;
+const bearerSecurity = [{ bearerAuth: [] }] as const;
 
 type Options = Readonly<{
   service: IdentityService;
   limiter: IdentityRateLimiter;
   privacyKey: string;
-  rateLimit: Readonly<{
-    windowSeconds: number;
-    registerMaximum: number;
-    loginMaximum: number;
-    actionRequestMaximum: number;
-    actionConfirmMaximum: number;
-  }>;
+  rateLimit: Readonly<{ windowSeconds:number; registerMaximum:number; loginMaximum:number; actionRequestMaximum:number; actionConfirmMaximum:number }>;
 }>;
 
 export const identityRoutes: FastifyPluginAsync<Options> = async (app, options) => {
-  const context = (request: FastifyRequest): SecurityContext => ({
-    ipHash: privacyHash(request.ip, options.privacyKey),
-    userAgentHash: privacyHash(String(request.headers["user-agent"] ?? "unknown"), options.privacyKey)
-  });
-
+  const context = (request: FastifyRequest): SecurityContext => ({ ipHash:privacyHash(request.ip,options.privacyKey),userAgentHash:privacyHash(String(request.headers["user-agent"]??"unknown"),options.privacyKey) });
   const subject = (request: FastifyRequest): string => {
-    const body = request.body as Record<string, unknown> | undefined;
-    const raw = typeof body?.email === "string"
-      ? body.email
-      : typeof body?.token === "string"
-        ? body.token
-        : "none";
-    return createHash("sha256").update(raw.toLowerCase()).digest("hex");
+    const body=request.body as Record<string,unknown>|undefined;
+    const raw=[body?.email,body?.token,body?.transactionToken,body?.challengeId].find(value=>typeof value==="string")??"none";
+    return createHash("sha256").update(String(raw).toLowerCase()).digest("hex");
+  };
+  const limited = (scope:string,maximum:number)=>async(request:FastifyRequest,reply:FastifyReply):Promise<FastifyReply|void>=>{
+    const digest=subject(request);const keys=[{key:privacyHash(`${scope}:pair:${request.ip}:${digest}`,options.privacyKey),maximum},{key:privacyHash(`${scope}:ip:${request.ip}`,options.privacyKey),maximum:maximum*10},{key:privacyHash(`${scope}:subject:${digest}`,options.privacyKey),maximum:maximum*5}];
+    const decisions=await Promise.all(keys.map(item=>options.limiter.consume(item.key,item.maximum,options.rateLimit.windowSeconds)));const denied=decisions.find(decision=>!decision.allowed);const remaining=Math.min(...decisions.map(decision=>decision.remaining));reply.header("x-ratelimit-limit",maximum).header("x-ratelimit-remaining",Math.max(0,remaining));if(denied){reply.header("retry-after",Math.max(...decisions.map(decision=>decision.retryAfterSeconds)));return reply.code(429).send({error:"rate_limit_exceeded",requestId:request.id});}
   };
 
-  const limited = (scope: string, maximum: number) => async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> => {
-    const subjectDigest = subject(request);
-    const keys = [
-      { key: privacyHash(`${scope}:pair:${request.ip}:${subjectDigest}`, options.privacyKey), maximum },
-      { key: privacyHash(`${scope}:ip:${request.ip}`, options.privacyKey), maximum: maximum * 10 },
-      { key: privacyHash(`${scope}:subject:${subjectDigest}`, options.privacyKey), maximum: maximum * 5 }
-    ];
-    const decisions = await Promise.all(keys.map((item) => options.limiter.consume(item.key, item.maximum, options.rateLimit.windowSeconds)));
-    const denied = decisions.find((decision) => !decision.allowed);
-    const remaining = Math.min(...decisions.map((decision) => decision.remaining));
-    reply.header("x-ratelimit-limit", maximum).header("x-ratelimit-remaining", Math.max(0, remaining));
-    if (denied) {
-      reply.header("retry-after", Math.max(...decisions.map((decision) => decision.retryAfterSeconds)));
-      return reply.code(429).send({ error: "rate_limit_exceeded", requestId: request.id });
-    }
-  };
+  app.post("/register",{preHandler:limited("register",options.rateLimit.registerMaximum),schema:{body:{type:"object",additionalProperties:false,required:["email","displayName","password"],properties:{email:{type:"string",minLength:3,maxLength:320},displayName:{type:"string",minLength:2,maxLength:80},password:{type:"string",minLength:15,maxLength:256}}},response:{202:acceptedSchema,400:errorSchema,429:errorSchema,503:errorSchema}}},async(request,reply)=>{await options.service.register(request.body as {email:string;displayName:string;password:string},context(request));return reply.code(202).send({accepted:true});});
+  app.post("/email-verification/request",{preHandler:limited("verify_request",options.rateLimit.actionRequestMaximum),schema:{body:{type:"object",additionalProperties:false,required:["email"],properties:{email:{type:"string",minLength:3,maxLength:320}}},response:{202:acceptedSchema,429:errorSchema}}},async(request,reply)=>{await options.service.requestEmailVerification((request.body as {email:string}).email,context(request));return reply.code(202).send({accepted:true});});
+  app.post("/email-verification/confirm",{preHandler:limited("verify_confirm",options.rateLimit.actionConfirmMaximum),schema:{body:{type:"object",additionalProperties:false,required:["token"],properties:{token:{type:"string",minLength:40,maxLength:200}}},response:{200:identitySchema,400:errorSchema,429:errorSchema}}},async request=>options.service.confirmEmailVerification((request.body as {token:string}).token,context(request)));
 
-  app.post("/register", {
-    preHandler: limited("register", options.rateLimit.registerMaximum),
-    schema: {
-      body: {
-        type: "object", additionalProperties: false, required: ["email", "displayName", "password"],
-        properties: {
-          email: { type: "string", minLength: 3, maxLength: 320 },
-          displayName: { type: "string", minLength: 2, maxLength: 80 },
-          password: { type: "string", minLength: 15, maxLength: 256 }
-        }
-      },
-      response: { 202: acceptedSchema, 400: errorSchema, 429: errorSchema }
-    }
-  }, async (request, reply) => {
-    await options.service.register(request.body as { email: string; displayName: string; password: string }, context(request));
-    return reply.code(202).send({ accepted: true });
-  });
+  app.post("/login",{preHandler:limited("login",options.rateLimit.loginMaximum),schema:{body:{type:"object",additionalProperties:false,required:["email","password"],properties:{email:{type:"string",minLength:3,maxLength:320},password:{type:"string",minLength:1,maxLength:256}}},response:{200:{oneOf:[identitySchema,mfaChallengeSchema]},401:errorSchema,403:errorSchema,429:errorSchema}}},async request=>options.service.login(request.body as {email:string;password:string},context(request)));
+  app.post("/mfa/complete",{preHandler:limited("mfa_complete",options.rateLimit.actionConfirmMaximum),schema:{body:{type:"object",additionalProperties:false,required:["transactionToken","method","code"],properties:{transactionToken:{type:"string",minLength:40,maxLength:200},method:{type:"string",enum:["totp","recovery_code"]},code:{type:"string",minLength:6,maxLength:64}}},response:{200:identitySchema,401:errorSchema,429:errorSchema}}},async request=>options.service.completeMfa(request.body as {transactionToken:string;method:"totp"|"recovery_code";code:string},context(request)));
 
-  app.post("/email-verification/request", {
-    preHandler: limited("verify_request", options.rateLimit.actionRequestMaximum),
-    schema: {
-      body: {
-        type: "object", additionalProperties: false, required: ["email"],
-        properties: { email: { type: "string", minLength: 3, maxLength: 320 } }
-      },
-      response: { 202: acceptedSchema, 429: errorSchema }
-    }
-  }, async (request, reply) => {
-    await options.service.requestEmailVerification((request.body as { email: string }).email, context(request));
-    return reply.code(202).send({ accepted: true });
-  });
+  app.post("/password-reset/request",{preHandler:limited("reset_request",options.rateLimit.actionRequestMaximum),schema:{body:{type:"object",additionalProperties:false,required:["email"],properties:{email:{type:"string",minLength:3,maxLength:320}}},response:{202:acceptedSchema,429:errorSchema}}},async(request,reply)=>{await options.service.requestPasswordReset((request.body as {email:string}).email,context(request));return reply.code(202).send({accepted:true});});
+  app.post("/password-reset/confirm",{preHandler:limited("reset_confirm",options.rateLimit.actionConfirmMaximum),schema:{body:{type:"object",additionalProperties:false,required:["token","newPassword"],properties:{token:{type:"string",minLength:40,maxLength:200},newPassword:{type:"string",minLength:15,maxLength:256}}},response:{204:{type:"null"},400:errorSchema,429:errorSchema,503:errorSchema}}},async(request,reply)=>{await options.service.confirmPasswordReset(request.body as {token:string;newPassword:string},context(request));return reply.code(204).send();});
 
-  app.post("/email-verification/confirm", {
-    preHandler: limited("verify_confirm", options.rateLimit.actionConfirmMaximum),
-    schema: {
-      body: {
-        type: "object", additionalProperties: false, required: ["token"],
-        properties: { token: { type: "string", minLength: 40, maxLength: 200 } }
-      },
-      response: { 200: identitySchema, 400: errorSchema, 429: errorSchema }
-    }
-  }, async (request) => options.service.confirmEmailVerification((request.body as { token: string }).token, context(request)));
+  app.get("/me",{schema:{security:bearerSecurity,response:{200:{type:"object",additionalProperties:false,required:["user"],properties:{user:userSchema}},401:errorSchema}}},async request=>({user:(await options.service.authenticate(extract(request.headers.authorization))).user}));
+  app.post("/sessions/rotate",{schema:{security:bearerSecurity,response:{200:{type:"object",additionalProperties:false,required:["sessionToken"],properties:{sessionToken:{type:"string"}}},401:errorSchema}}},async request=>({sessionToken:await options.service.rotateSession(extract(request.headers.authorization),context(request))}));
+  app.get("/sessions",{schema:{security:bearerSecurity,response:{200:{type:"object",additionalProperties:false,required:["sessions"],properties:{sessions:{type:"array",items:sessionSchema}}},401:errorSchema}}},async request=>({sessions:await options.service.listSessions(extract(request.headers.authorization))}));
+  app.delete("/sessions/:sessionId",{schema:{security:bearerSecurity,params:{type:"object",required:["sessionId"],properties:{sessionId:{type:"string",format:"uuid"}}},response:{204:{type:"null"},401:errorSchema}}},async(request,reply)=>{await options.service.revokeSessionById(extract(request.headers.authorization),(request.params as {sessionId:string}).sessionId,context(request));return reply.code(204).send();});
+  app.post("/logout",{schema:{security:bearerSecurity}},async(request,reply)=>{await options.service.logout(extract(request.headers.authorization),context(request));return reply.code(204).send();});
+  app.post("/logout-all",{schema:{security:bearerSecurity}},async(request,reply)=>{await options.service.logoutAll(extract(request.headers.authorization),context(request));return reply.code(204).send();});
 
-  app.post("/login", {
-    preHandler: limited("login", options.rateLimit.loginMaximum),
-    schema: {
-      body: {
-        type: "object", additionalProperties: false, required: ["email", "password"],
-        properties: {
-          email: { type: "string", minLength: 3, maxLength: 320 },
-          password: { type: "string", minLength: 1, maxLength: 256 }
-        }
-      },
-      response: { 200: identitySchema, 401: errorSchema, 403: errorSchema, 429: errorSchema }
-    }
-  }, async (request) => options.service.login(request.body as { email: string; password: string }, context(request)));
+  app.get("/mfa/status",{schema:{security:bearerSecurity,response:{200:{type:"object",additionalProperties:false,required:["totpEnabled","recoveryCodesRemaining","passkeys"],properties:{totpEnabled:{type:"boolean"},recoveryCodesRemaining:{type:"integer",minimum:0},passkeys:{type:"integer",minimum:0}}},401:errorSchema}}},async request=>options.service.mfaStatus(extract(request.headers.authorization)));
+  app.post("/mfa/totp/enrollment/start",{schema:{security:bearerSecurity,response:{200:{type:"object",additionalProperties:false,required:["enrollmentId","secret","otpauthUri","expiresAt"],properties:{enrollmentId:{type:"string",format:"uuid"},secret:{type:"string"},otpauthUri:{type:"string"},expiresAt:{type:"string",format:"date-time"}}},401:errorSchema,403:errorSchema}}},async request=>options.service.startTotpEnrollment(extract(request.headers.authorization),context(request)));
+  app.post("/mfa/totp/enrollment/confirm",{preHandler:limited("totp_enroll",options.rateLimit.actionConfirmMaximum),schema:{security:bearerSecurity,body:{type:"object",additionalProperties:false,required:["enrollmentId","code"],properties:{enrollmentId:{type:"string",format:"uuid"},code:{type:"string",pattern:"^[0-9]{6}$"}}},response:{200:{type:"object",additionalProperties:false,required:["recoveryCodes"],properties:{recoveryCodes:{type:"array",items:{type:"string"},minItems:10,maxItems:10}}},400:errorSchema,401:errorSchema,429:errorSchema}}},async request=>options.service.confirmTotpEnrollment(extract(request.headers.authorization),request.body as {enrollmentId:string;code:string},context(request)));
+  app.post("/mfa/recovery-codes/regenerate",{preHandler:limited("recovery_regenerate",options.rateLimit.actionConfirmMaximum),schema:{security:bearerSecurity,body:{type:"object",additionalProperties:false,required:["code"],properties:{code:{type:"string",pattern:"^[0-9]{6}$"}}},response:{200:{type:"object",additionalProperties:false,required:["recoveryCodes"],properties:{recoveryCodes:{type:"array",items:{type:"string"},minItems:10,maxItems:10}}},400:errorSchema,401:errorSchema,403:errorSchema,429:errorSchema}}},async request=>options.service.regenerateRecoveryCodes(extract(request.headers.authorization),(request.body as {code:string}).code,context(request)));
+  app.post("/mfa/totp/disable",{preHandler:limited("totp_disable",options.rateLimit.actionConfirmMaximum),schema:{security:bearerSecurity,body:{type:"object",additionalProperties:false,required:["code"],properties:{code:{type:"string",pattern:"^[0-9]{6}$"}}},response:{204:{type:"null"},400:errorSchema,401:errorSchema,403:errorSchema,429:errorSchema}}},async(request,reply)=>{await options.service.disableTotp(extract(request.headers.authorization),(request.body as {code:string}).code,context(request));return reply.code(204).send();});
 
-  app.post("/password-reset/request", {
-    preHandler: limited("reset_request", options.rateLimit.actionRequestMaximum),
-    schema: {
-      body: {
-        type: "object", additionalProperties: false, required: ["email"],
-        properties: { email: { type: "string", minLength: 3, maxLength: 320 } }
-      },
-      response: { 202: acceptedSchema, 429: errorSchema }
-    }
-  }, async (request, reply) => {
-    await options.service.requestPasswordReset((request.body as { email: string }).email, context(request));
-    return reply.code(202).send({ accepted: true });
-  });
+  app.post("/passkeys/registration/options",{preHandler:limited("passkey_register",options.rateLimit.actionRequestMaximum),schema:{security:bearerSecurity,body:{type:"object",additionalProperties:false,required:["label"],properties:{label:{type:"string",minLength:1,maxLength:64}}},response:{200:challengeResponseSchema,401:errorSchema,403:errorSchema,429:errorSchema}}},async request=>options.service.beginPasskeyRegistration(extract(request.headers.authorization),(request.body as {label:string}).label,context(request)));
+  app.post("/passkeys/registration/verify",{preHandler:limited("passkey_register_verify",options.rateLimit.actionConfirmMaximum),schema:{security:bearerSecurity,body:{type:"object",additionalProperties:false,required:["challengeId","response"],properties:{challengeId:{type:"string",format:"uuid"},response:{type:"object",additionalProperties:true}}},response:{200:{type:"object",additionalProperties:false,required:["passkey"],properties:{passkey:passkeySchema}},400:errorSchema,401:errorSchema,429:errorSchema}}},async request=>options.service.finishPasskeyRegistration(extract(request.headers.authorization),request.body as {challengeId:string;response:RegistrationResponseJSON},context(request)));
+  app.post("/passkeys/authentication/options",{preHandler:limited("passkey_auth",options.rateLimit.loginMaximum),schema:{response:{200:challengeResponseSchema,429:errorSchema}}},async request=>options.service.beginPasskeyAuthentication(context(request)));
+  app.post("/passkeys/authentication/verify",{preHandler:limited("passkey_auth_verify",options.rateLimit.actionConfirmMaximum),schema:{body:{type:"object",additionalProperties:false,required:["challengeId","response"],properties:{challengeId:{type:"string",format:"uuid"},response:{type:"object",additionalProperties:true}}},response:{200:identitySchema,400:errorSchema,401:errorSchema,429:errorSchema}}},async request=>options.service.finishPasskeyAuthentication(request.body as {challengeId:string;response:AuthenticationResponseJSON},context(request)));
+  app.get("/passkeys",{schema:{security:bearerSecurity,response:{200:{type:"object",additionalProperties:false,required:["passkeys"],properties:{passkeys:{type:"array",items:passkeySchema}}},401:errorSchema}}},async request=>options.service.listPasskeys(extract(request.headers.authorization)));
+  app.delete("/passkeys/:passkeyId",{schema:{security:bearerSecurity,params:{type:"object",required:["passkeyId"],properties:{passkeyId:{type:"string",format:"uuid"}}},response:{204:{type:"null"},401:errorSchema,403:errorSchema,404:errorSchema,409:errorSchema}}},async(request,reply)=>{await options.service.deletePasskey(extract(request.headers.authorization),(request.params as {passkeyId:string}).passkeyId,context(request));return reply.code(204).send();});
 
-  app.post("/password-reset/confirm", {
-    preHandler: limited("reset_confirm", options.rateLimit.actionConfirmMaximum),
-    schema: {
-      body: {
-        type: "object", additionalProperties: false, required: ["token", "newPassword"],
-        properties: {
-          token: { type: "string", minLength: 40, maxLength: 200 },
-          newPassword: { type: "string", minLength: 15, maxLength: 256 }
-        }
-      },
-      response: { 204: { type: "null" }, 400: errorSchema, 429: errorSchema }
-    }
-  }, async (request, reply) => {
-    await options.service.confirmPasswordReset(request.body as { token: string; newPassword: string }, context(request));
-    return reply.code(204).send();
-  });
-
-  app.get("/me", {
-    schema: {
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: { type: "object", additionalProperties: false, required: ["user"], properties: { user: userSchema } },
-        401: errorSchema
-      }
-    }
-  }, async (request) => ({ user: (await options.service.authenticate(extract(request.headers.authorization))).user }));
-
-  app.post("/sessions/rotate", {
-    schema: {
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: { type: "object", additionalProperties: false, required: ["sessionToken"], properties: { sessionToken: { type: "string" } } },
-        401: errorSchema
-      }
-    }
-  }, async (request) => ({ sessionToken: await options.service.rotateSession(extract(request.headers.authorization), context(request)) }));
-
-  app.get("/sessions", {
-    schema: {
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: { type: "object", additionalProperties: false, required: ["sessions"], properties: { sessions: { type: "array", items: sessionSchema } } },
-        401: errorSchema
-      }
-    }
-  }, async (request) => ({ sessions: await options.service.listSessions(extract(request.headers.authorization)) }));
-
-  app.delete("/sessions/:sessionId", {
-    schema: {
-      security: [{ bearerAuth: [] }],
-      params: { type: "object", required: ["sessionId"], properties: { sessionId: { type: "string", format: "uuid" } } },
-      response: { 204: { type: "null" }, 401: errorSchema }
-    }
-  }, async (request, reply) => {
-    await options.service.revokeSessionById(extract(request.headers.authorization), (request.params as { sessionId: string }).sessionId, context(request));
-    return reply.code(204).send();
-  });
-
-  app.post("/logout", { schema: { security: [{ bearerAuth: [] }] } }, async (request, reply) => {
-    await options.service.logout(extract(request.headers.authorization), context(request));
-    return reply.code(204).send();
-  });
-
-  app.post("/logout-all", { schema: { security: [{ bearerAuth: [] }] } }, async (request, reply) => {
-    await options.service.logoutAll(extract(request.headers.authorization), context(request));
-    return reply.code(204).send();
-  });
-
-  app.setErrorHandler(async (error, request, reply) => {
-    if (error instanceof IdentityError) return reply.code(error.statusCode).send({ error: error.code, requestId: request.id });
-    throw error;
-  });
+  app.setErrorHandler(async(error,request,reply)=>{if(error instanceof IdentityError)return reply.code(error.statusCode).send({error:error.code,requestId:request.id});throw error;});
 };
 
-function extract(value: string | undefined): string {
-  if (!value?.startsWith("Bearer ")) throw new IdentityError("session_missing", 401);
-  const token = value.slice(7).trim();
-  if (!token) throw new IdentityError("session_missing", 401);
-  return token;
-}
+function extract(value:string|undefined):string{if(!value?.startsWith("Bearer "))throw new IdentityError("session_missing",401);const token=value.slice(7).trim();if(!token)throw new IdentityError("session_missing",401);return token;}

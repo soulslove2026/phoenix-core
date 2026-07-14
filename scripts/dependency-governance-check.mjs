@@ -86,4 +86,9 @@ if (ciWorkflow.includes("> phoenix-core-sbom.cdx.json") ||
   fail("Generated SBOM evidence must not be written inside the repository");
 }
 
+const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+const packageLock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+if (packageJson.dependencies?.["@simplewebauthn/server"] !== "13.3.2") fail("SimpleWebAuthn must remain exactly pinned at 13.3.2");
+if (packageLock.packages?.["node_modules/@simplewebauthn/server"]?.version !== "13.3.2") fail("SimpleWebAuthn lockfile version differs");
+
 if (!process.exitCode) console.log("Dependency governance checks passed.");

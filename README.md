@@ -1,43 +1,47 @@
 # Phoenix Core
 
-**Version:** `3.4.2`  
-**Milestone:** Identity Slice 2 — Release 1  
+**Version:** `3.5.0`  
+**Milestone:** Identity Slice 2 — Phase B, Release 1  
 **Status:** Candidate  
 **Production ready:** No
 
-Identity Slice 2 adds email ownership verification, password recovery, keyed opaque-token storage, encrypted notification outbox payloads, absolute and idle session expiry, session rotation and management, distributed PostgreSQL rate limiting, security audit events, stronger password hashing, TLS enforcement controls, CodeQL, dependency automation, and additional CI security gates.
+Phase B adds phishing-resistant Passkeys/WebAuthn, TOTP multifactor authentication, one-time recovery codes, breached-password screening, recent-authentication gates, stronger session assurance, and an encrypted transactional notification-delivery worker.
 
-## Identity API
+## Identity API additions
 
-- `POST /v1/identity/register`
-- `POST /v1/identity/email-verification/request`
-- `POST /v1/identity/email-verification/confirm`
-- `POST /v1/identity/login`
-- `POST /v1/identity/password-reset/request`
-- `POST /v1/identity/password-reset/confirm`
-- `GET /v1/identity/me`
-- `POST /v1/identity/sessions/rotate`
-- `GET /v1/identity/sessions`
-- `DELETE /v1/identity/sessions/:sessionId`
-- `POST /v1/identity/logout`
-- `POST /v1/identity/logout-all`
+- `POST /v1/identity/mfa/complete`
+- `GET /v1/identity/mfa/status`
+- `POST /v1/identity/mfa/totp/enrollment/start`
+- `POST /v1/identity/mfa/totp/enrollment/confirm`
+- `POST /v1/identity/mfa/recovery-codes/regenerate`
+- `POST /v1/identity/mfa/totp/disable`
+- `POST /v1/identity/passkeys/registration/options`
+- `POST /v1/identity/passkeys/registration/verify`
+- `POST /v1/identity/passkeys/authentication/options`
+- `POST /v1/identity/passkeys/authentication/verify`
+- `GET /v1/identity/passkeys`
+- `DELETE /v1/identity/passkeys/:passkeyId`
 
-Registration and recovery request responses are deliberately generic. Raw verification and recovery tokens are never stored; notification payloads are encrypted with AES-256-GCM before entering the outbox.
+## Security posture
 
-## Security Boundaries
+- Passkeys require discoverable credentials and user verification.
+- TOTP secrets are encrypted; accepted time steps cannot be replayed.
+- Recovery codes are one-time and stored only as keyed hashes.
+- Passwords are screened with the HIBP k-anonymity range API in production-required mode.
+- Sensitive factor operations require recent authentication and AAL2 where applicable.
+- Notification payloads are encrypted at rest and delivered by a retrying, idempotent worker.
+- Exact manifests, checksums, audits, SBOM, CodeQL, dependency review, migrations, tests, build, and Docker remain mandatory gates.
 
-This release does not claim public production readiness. Passkeys/WebAuthn, TOTP MFA, recovery codes, breached-password provider integration, a production notification worker, privileged administrator authentication, risk scoring, and external penetration testing remain required gates.
+## Local verification
 
-## Clean Snapshot Installation
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+npm run check
+npm test
+npm run build
+npm audit --audit-level=high
+```
 
-Preserve `.git`, remove all other files in the local repository, and copy this complete snapshot. This prevents exact-manifest drift.
+## Clean snapshot installation
 
-CI generates a CycloneDX SBOM, performs production and full dependency audits, runs CodeQL, and reviews pull-request dependency changes.
-
-## Dependency Governance
-
-Routine automatic version-update pull requests are disabled. Dependabot security alerts and security updates remain enabled. Planned upgrades are delivered through reviewed maintenance releases with synchronized manifests, checksums, audits, SBOM evidence, tests, CodeQL, and documentation.
-
-## CI Evidence Isolation
-
-CycloneDX SBOMs and other generated security evidence are written to the GitHub runner temporary directory, not the governed repository workspace. CI checks repository authority before generation and confirms that the working tree remains clean afterward.
+Preserve `.git`, remove every other local repository item, and copy this complete snapshot. The release remains Candidate until GitHub Node.js 24, PostgreSQL 18, Docker, CodeQL, and documentation evidence pass.

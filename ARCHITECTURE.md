@@ -1,22 +1,25 @@
 # Phoenix Core Architecture
 
-Phoenix Core is a bounded-context modular monolith. Identity owns credentials, email ownership state, account status, recovery actions, sessions, abuse controls, notification-security records, and identity audit events behind explicit application, HTTP, and PostgreSQL boundaries.
+Phoenix Core remains a bounded-context modular monolith using Node.js 24, TypeScript 5.9, Fastify 5, PostgreSQL 18, JSON Schema/OpenAPI, OCI containers, and GitHub Actions.
 
-## Runtime
+## Identity Phase B boundaries
 
-- Node.js 24 LTS
-- TypeScript 5.9 strict mode
-- Fastify 5
-- PostgreSQL 18
-- JSON Schema and OpenAPI
-- OCI containers and GitHub Actions
+- `IdentityService` owns orchestration and security invariants.
+- `PostgresIdentityRepository` owns users, actions, sessions, and audit events.
+- `PostgresPhaseBIdentityRepository` owns Passkeys, TOTP, recovery codes, MFA transactions, session assurance, WebAuthn challenges, and notification delivery state.
+- `PasskeyManager` isolates WebAuthn protocol verification.
+- `HibpPasswordBreachChecker` isolates compromised-password screening.
+- `NotificationDeliveryService` claims outbox rows transactionally and delivers them through a least-privilege provider adapter.
 
-## Identity boundaries
+PostgreSQL remains authoritative truth. Passkey public keys are stored; private keys never leave authenticators. TOTP secrets and WebAuthn challenges are AES-256-GCM encrypted. Bearer and recovery tokens are persisted only as HMAC hashes.
 
-HTTP routes delegate to `IdentityService`; persistence is isolated by `IdentityRepository`; PostgreSQL is authoritative transactional truth. Plaintext passwords, bearer tokens, verification tokens, and reset tokens never enter persistent storage unprotected.
+## Assurance model
 
-The primary identity database stores HMAC token hashes. Notification delivery payloads are separately protected with AES-256-GCM. Network and user-agent signals are HMAC-pseudonymized. PostgreSQL provides distributed atomic rate-limit buckets shared across application replicas.
+- AAL1: verified email or password without a second factor.
+- AAL2: password plus TOTP, Passkey, or controlled recovery-code login.
+- Recovery-code sessions are deliberately restricted from factor management.
+- Sensitive operations require recent authentication; factor removal requires strong recent authentication.
 
-## Security evolution
+## Delivery boundary
 
-Identity Slice 2 Release 1 implements email verification, recovery, hardened sessions, distributed abuse controls, and security events. Passkeys/WebAuthn, TOTP MFA, recovery codes, breached-password screening, risk scoring, privileged administrator isolation, and the production notification worker remain separate, mandatory gates.
+The application writes encrypted notifications transactionally. A separate worker decrypts only claimed rows, sends idempotent provider requests, retries with bounded exponential delay, and dead-letters exhausted records.

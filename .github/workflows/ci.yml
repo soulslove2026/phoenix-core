@@ -29,6 +29,10 @@ jobs:
       PHOENIX_DATABASE_URL: postgres://phoenix:phoenix@127.0.0.1:5432/phoenix
       PHOENIX_DOCUMENTATION_ENABLED: "false"
       PHOENIX_REQUIRE_TLS: "false"
+      PHOENIX_IDENTITY_PASSWORD_BREACH_MODE: disabled
+      PHOENIX_IDENTITY_WEBAUTHN_RP_ID: localhost
+      PHOENIX_IDENTITY_WEBAUTHN_ORIGINS: http://localhost:3000
+      PHOENIX_IDENTITY_TOTP_ISSUER: Phoenix CI
       NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
@@ -51,7 +55,7 @@ jobs:
           python - <<'PY'
           import base64, os
           with open(os.environ['GITHUB_ENV'], 'a') as f:
-              for name in ['PHOENIX_IDENTITY_TOKEN_PEPPER','PHOENIX_IDENTITY_NOTIFICATION_KEY','PHOENIX_IDENTITY_PRIVACY_KEY']:
+              for name in ['PHOENIX_IDENTITY_TOKEN_PEPPER','PHOENIX_IDENTITY_NOTIFICATION_KEY','PHOENIX_IDENTITY_PRIVACY_KEY','PHOENIX_IDENTITY_MFA_KEY']:
                   f.write(f"{name}={base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('=')}\n")
           PY
       - name: Verify public lockfile registry
@@ -91,6 +95,19 @@ jobs:
         run: npm run migrate
       - name: Verify migration idempotency and checksums
         run: npm run migrate
+      - name: Verify Phase B migration ledger
+        shell: bash
+        run: |
+          node --input-type=module - <<'NODE'
+          import pg from "pg";
+          const pool = new pg.Pool({ connectionString: process.env.PHOENIX_DATABASE_URL, max: 1 });
+          try {
+            const result = await pool.query("select count(*)::int as count from phoenix_schema_migrations");
+            if (result.rows[0]?.count !== 4) throw new Error(`expected 4 migrations, found ${result.rows[0]?.count}`);
+          } finally {
+            await pool.end();
+          }
+          NODE
       - name: Unit tests
         run: npm test
       - name: PostgreSQL integration tests

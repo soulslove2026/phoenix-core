@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.4.2",
+  "version": "3.5.0",
   "private": true,
-  "description": "Phoenix Identity Slice 2: verification, recovery, and session hardening",
+  "description": "Phoenix Identity Slice 2 Phase B: passkeys, MFA, breached-password screening, and notification delivery",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -23,11 +23,14 @@
     "migrate": "tsx scripts/migrate.ts",
     "migrate:compiled": "node dist/scripts/migrate.js",
     "security:check": "node scripts/security-check.mjs && node scripts/dependency-governance-check.mjs",
-    "dependencies:policy": "node scripts/dependency-governance-check.mjs"
+    "dependencies:policy": "node scripts/dependency-governance-check.mjs",
+    "notifications:worker": "node dist/scripts/notification-worker.js",
+    "notifications:worker:dev": "tsx scripts/notification-worker.ts"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",
     "@fastify/swagger-ui": "6.1.0",
+    "@simplewebauthn/server": "13.3.2",
     "fastify": "5.10.0",
     "fastify-plugin": "5.1.0",
     "pg": "8.16.3"

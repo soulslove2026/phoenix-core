@@ -1,6 +1,6 @@
 {
-  "version": "3.4.2",
-  "release": "Phoenix CI Artifact Isolation Hotfix \u2014 Release 1",
+  "version": "3.5.0",
+  "release": "Phoenix Identity Slice 2 Phase B \u2014 Release 1",
   "release_date": "2026-07-13",
   "status": "candidate",
   "slice": "Identity Slice 2",
@@ -10,5 +10,5 @@
   "next_gate": "GitHub Actions, CodeQL, recovery/session abuse review, and documentation integrity",
   "distribution": "clean repository snapshot",
   "replacement_required": true,
-  "scope": "Isolate generated CI security evidence from governed repository state"
+  "scope": "Passkeys, TOTP MFA, recovery codes, breached-password screening, and production-capable notification delivery"
 }
