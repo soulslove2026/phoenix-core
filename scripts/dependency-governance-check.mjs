@@ -88,7 +88,28 @@ if (ciWorkflow.includes("> phoenix-core-sbom.cdx.json") ||
   fail("Generated SBOM evidence must not be written inside the repository");
 }
 
+
+const packageScripts = JSON.parse(fs.readFileSync("package.json", "utf8")).scripts ?? {};
+if (packageScripts["incident:snapshot"] !== "node dist/scripts/security-incident-snapshot.js") {
+  fail("incident:snapshot must execute the governed compiled artifact");
+}
+const ciBuildIndex = ciWorkflow.indexOf("- name: Production build");
+const ciSnapshotIndex = ciWorkflow.indexOf("- name: Validate incident-safe snapshot from compiled output");
+if (ciBuildIndex < 0 || ciSnapshotIndex < 0 || ciBuildIndex > ciSnapshotIndex) {
+  fail("CI must build compiled operational tools before executing them");
+}
+if (!ciWorkflow.includes("test -f dist/scripts/security-incident-snapshot.js")) {
+  fail("CI must prove the compiled incident snapshot exists before execution");
+}
+
 const assurance = fs.readFileSync(".github/workflows/assurance.yml", "utf8");
+
+const assuranceBuildIndex = assurance.indexOf("- name: Run tests and build");
+const assuranceSnapshotIndex = assurance.indexOf("- name: Create incident-safe operational snapshot");
+if (assuranceBuildIndex < 0 || assuranceSnapshotIndex < 0 || assuranceBuildIndex > assuranceSnapshotIndex) {
+  fail("Production Assurance must build before compiled operational-tool execution");
+}
+
 for (const required of ["actions/attest@v4", "pg_dump", "pg_restore", "PHOENIX_RECOVERY_DATABASE_URL", "created_attestation_paths.txt", "Verify governed repository stayed clean"]) {
   if (!assurance.includes(required)) fail(`Production assurance workflow missing: ${required}`);
 }

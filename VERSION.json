@@ -1,28 +1,27 @@
 {
-  "version": "3.6.1",
-  "release": "Phoenix Identity Slice 2 Phase C \u2014 TypeScript Header Narrowing Hotfix Release 1",
+  "version": "3.6.2",
+  "release": "Phoenix Identity Slice 2 Phase C \u2014 Compiled Tool Ordering Hotfix Release 1",
   "release_date": "2026-07-14",
   "status": "candidate",
   "production_ready": false,
-  "scope": "Correct strict TypeScript handling of Fastify Inject response headers without weakening the Passkey validation security assertion",
+  "scope": "Build compiled operational tools before CI executes the incident-safe snapshot",
   "previous_verified_release": "3.5.1-identity-slice2-phase-b-verification",
   "verification_required": [
     "CI",
     "CodeQL",
     "Production Assurance Evidence",
     "Documentation Check",
-    "Documentation Integrity",
-    "real-browser Passkey evidence",
-    "real notification-provider smoke evidence",
-    "approved key-rotation dry run",
-    "deployment recovery drill",
-    "external security review"
+    "Documentation Integrity"
   ],
-  "previous_candidate_release": "3.6.0-identity-slice2-phase-c-r1",
+  "previous_candidate_release": "3.6.1-identity-slice2-phase-c-typecheck-hotfix-r1",
   "failed_evidence": {
-    "commit": "7989ab9",
+    "commit": "c590f6e",
     "workflow": "CI",
-    "step": "Strict TypeScript checks",
-    "diagnostic": "TS2345 at test/passkey-harness.test.ts:12"
+    "step": "Validate incident-safe snapshot",
+    "diagnostic": "MODULE_NOT_FOUND: dist/scripts/security-incident-snapshot.js"
+  },
+  "successful_evidence_on_trigger_commit": {
+    "CodeQL": "success in 1 minute 19 seconds",
+    "Production Assurance Evidence": "success in 48 seconds"
   }
 }

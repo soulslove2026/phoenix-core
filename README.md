@@ -1,7 +1,7 @@
 # Phoenix Core
 
-**Version:** `3.6.1`  
-**Milestone:** Identity Slice 2 Phase C — TypeScript Header Narrowing Hotfix Release 1  
+**Version:** `3.6.2`  
+**Milestone:** Identity Slice 2 Phase C — Compiled Tool Ordering Hotfix Release 1  
 **Status:** Candidate  
 **Production ready:** No
 
@@ -47,3 +47,8 @@ The browser harness is forbidden in production. Operations endpoints require a d
 The Passkey validation harness test now proves that `x-robots-tag` is a string before applying the `noindex` regular-expression assertion.
 
 This preserves the security check and satisfies the Node.js `OutgoingHttpHeader` union type, which can also represent numbers or string arrays. The release remains Candidate and not production-ready.
+
+
+## v3.6.2 Compiled Tool Ordering Hotfix
+
+CI now runs the production build before executing the compiled incident-safe snapshot utility. It also proves that `dist/scripts/security-incident-snapshot.js` exists before execution.

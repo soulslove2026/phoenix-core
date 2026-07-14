@@ -27,6 +27,7 @@ const required = [
   "docs/OPERATIONS_MONITORING.md", "docs/KEY_ROTATION_RUNBOOK.md",
   "docs/BACKUP_RESTORE_DRILL.md", "docs/INCIDENT_RESPONSE.md", "docs/ARTIFACT_ATTESTATIONS.md",
   "docs/PHASE_C_TYPESCRIPT_HEADER_HOTFIX.md",
+  "docs/PHASE_C_COMPILED_TOOL_ORDERING_HOTFIX.md",
   "FILE_MANIFEST.json", "CHECKSUMS.sha256", ".github/workflows/ci.yml", ".github/workflows/assurance.yml",
   ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml", ".github/dependabot.yml"
 ];
@@ -44,7 +45,7 @@ const system = read("src/routes/system.ts");
 if (pkg.version !== version.version) fail("package.json and VERSION.json versions differ");
 if (lock.version !== version.version || lock.packages?.[""]?.version !== version.version) fail("package-lock version differs");
 if (manifest.repository_version !== version.version) fail("manifest version differs");
-if (!readme.includes("3.6.1") || !readme.includes("Phase C")) fail("README authority is stale");
+if (!readme.includes("3.6.2") || !readme.includes("Phase C")) fail("README authority is stale");
 for (const requiredControl of ["Passkeys", "TOTP", "breached-password", "notification-delivery worker", "operations monitoring", "key rotation", "backup and restore", "artifact attestations"]) {
   if (!security.includes(requiredControl)) fail(`SECURITY missing Phase B control: ${requiredControl}`);
 }

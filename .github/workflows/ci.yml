@@ -112,12 +112,13 @@ jobs:
         run: npm test
       - name: PostgreSQL integration tests
         run: npm run test:integration
-      - name: Validate incident-safe snapshot
-        shell: bash
-        run: |
-          PHOENIX_INCIDENT_SNAPSHOT_PATH="${{ runner.temp }}/incident-snapshot.json" npm run incident:snapshot
-          node -e "const r=JSON.parse(require('node:fs').readFileSync(process.argv[1],'utf8')); if(r.schema!=='phoenix.security-incident-snapshot.v1') process.exit(1)" "${{ runner.temp }}/incident-snapshot.json"
       - name: Production build
         run: npm run build
+      - name: Validate incident-safe snapshot from compiled output
+        shell: bash
+        run: |
+          test -f dist/scripts/security-incident-snapshot.js
+          PHOENIX_INCIDENT_SNAPSHOT_PATH="${{ runner.temp }}/incident-snapshot.json" npm run incident:snapshot
+          node -e "const r=JSON.parse(require('node:fs').readFileSync(process.argv[1],'utf8')); if(r.schema!=='phoenix.security-incident-snapshot.v1') process.exit(1)" "${{ runner.temp }}/incident-snapshot.json"
       - name: Container build
         run: docker build --progress=plain -t phoenix-core:${{ github.sha }} .
