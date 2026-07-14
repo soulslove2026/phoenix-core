@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.6.0",
+  "version": "3.6.1",
   "private": true,
-  "description": "Phoenix Identity Slice 2 Phase C: browser validation, operations assurance, recovery drills, and provenance",
+  "description": "Phoenix Identity Slice 2 Phase C production-assurance foundation with strict Fastify response-header type narrowing",
   "type": "module",
   "engines": {
     "node": ">=24 <25"

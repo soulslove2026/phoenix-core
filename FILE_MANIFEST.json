@@ -1,6 +1,6 @@
 {
-  "repository_version": "3.6.0",
-  "file_count": 92,
+  "repository_version": "3.6.1",
+  "file_count": 93,
   "files": [
     ".env.example",
     ".github/dependabot.yml",
@@ -34,6 +34,7 @@
     "docs/PASSKEYS_AND_MFA.md",
     "docs/PASSKEY_BROWSER_VALIDATION.md",
     "docs/PASSWORD_BREACH_SCREENING.md",
+    "docs/PHASE_C_TYPESCRIPT_HEADER_HOTFIX.md",
     "docs/RELEASE2_CLEAN_SNAPSHOT.md",
     "docs/REPOSITORY_RECONCILIATION.md",
     "docs/RUNBOOK.md",

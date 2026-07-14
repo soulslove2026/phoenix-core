@@ -9,7 +9,9 @@ test("passkey validation harness serves same-origin assets without embedded secr
   const page = await app.inject({ method: "GET", url: "/passkey-validation/" });
   assert.equal(page.statusCode, 200);
   assert.match(page.body, /Phoenix Passkey Validation/u);
-  assert.match(page.headers["x-robots-tag"] ?? "", /noindex/u);
+  const robotsTag = page.headers["x-robots-tag"];
+  assert.ok(typeof robotsTag === "string");
+  assert.match(robotsTag, /noindex/u);
   const script = await app.inject({ method: "GET", url: "/passkey-validation/app.js" });
   assert.equal(script.statusCode, 200);
   assert.match(script.body, /navigator\.credentials\.create/u);
