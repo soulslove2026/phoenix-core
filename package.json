@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
-  "description": "Phoenix Identity Slice 2 Phase B: passkeys, MFA, breached-password screening, and notification delivery",
+  "description": "Phoenix Identity Slice 2 Phase C: browser validation, operations assurance, recovery drills, and provenance",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -25,7 +25,14 @@
     "security:check": "node scripts/security-check.mjs && node scripts/dependency-governance-check.mjs",
     "dependencies:policy": "node scripts/dependency-governance-check.mjs",
     "notifications:worker": "node dist/scripts/notification-worker.js",
-    "notifications:worker:dev": "tsx scripts/notification-worker.ts"
+    "notifications:worker:dev": "tsx scripts/notification-worker.ts",
+    "identity:keys:rotate": "node dist/scripts/rotate-identity-keys.js",
+    "identity:keys:rotate:dev": "tsx scripts/rotate-identity-keys.ts",
+    "incident:snapshot": "node dist/scripts/security-incident-snapshot.js",
+    "incident:snapshot:dev": "tsx scripts/security-incident-snapshot.ts",
+    "recovery:verify": "tsx scripts/verify-restored-database.ts",
+    "notifications:smoke": "node dist/scripts/notification-provider-smoke.js",
+    "notifications:smoke:dev": "tsx scripts/notification-provider-smoke.ts"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",

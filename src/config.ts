@@ -44,6 +44,14 @@ export type AppConfig = Readonly<{
   notificationWorkerMaxAttempts: number;
   notificationWorkerPollMs: number;
   notificationWorkerOnce: boolean;
+  operationsEnabled: boolean;
+  operationsToken?: string;
+  operationsObservationWindowMinutes: number;
+  operationsStaleLockSeconds: number;
+  operationsMaxDeadLetters: number;
+  operationsMaxStaleLocks: number;
+  operationsMaxDeniedEvents: number;
+  passkeyValidationEnabled: boolean;
 }>;
 
 function boundedInt(name: string, value: string | undefined, fallback: number, minimum: number, maximum: number): number {
@@ -107,10 +115,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   const providerUrlRaw = optionalValue(env.PHOENIX_NOTIFICATION_PROVIDER_URL);
   const providerUrl = providerUrlRaw ? normalizedUrl("PHOENIX_NOTIFICATION_PROVIDER_URL", providerUrlRaw, production) : undefined;
+  const operationsEnabled = booleanValue("PHOENIX_OPERATIONS_ENABLED", env.PHOENIX_OPERATIONS_ENABLED, false);
+  const operationsToken = validateBase64UrlSecret("PHOENIX_OPERATIONS_TOKEN", env.PHOENIX_OPERATIONS_TOKEN, operationsEnabled);
+  const passkeyValidationEnabled = booleanValue("PHOENIX_PASSKEY_VALIDATION_ENABLED", env.PHOENIX_PASSKEY_VALIDATION_ENABLED, false);
+  if (production && passkeyValidationEnabled) throw new Error("Passkey validation harness is forbidden in production");
 
   return Object.freeze({
     serviceName: "phoenix-core",
-    version: "3.5.0",
+    version: "3.6.0",
     environment,
     host: optionalValue(env.PHOENIX_HOST) ?? "127.0.0.1",
     port,
@@ -153,6 +165,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     notificationWorkerBatchSize: boundedInt("PHOENIX_NOTIFICATION_WORKER_BATCH_SIZE", env.PHOENIX_NOTIFICATION_WORKER_BATCH_SIZE, 25, 1, 100),
     notificationWorkerMaxAttempts: boundedInt("PHOENIX_NOTIFICATION_WORKER_MAX_ATTEMPTS", env.PHOENIX_NOTIFICATION_WORKER_MAX_ATTEMPTS, 8, 1, 20),
     notificationWorkerPollMs: boundedInt("PHOENIX_NOTIFICATION_WORKER_POLL_MS", env.PHOENIX_NOTIFICATION_WORKER_POLL_MS, 5_000, 250, 60_000),
-    notificationWorkerOnce: booleanValue("PHOENIX_NOTIFICATION_WORKER_ONCE", env.PHOENIX_NOTIFICATION_WORKER_ONCE, false)
+    notificationWorkerOnce: booleanValue("PHOENIX_NOTIFICATION_WORKER_ONCE", env.PHOENIX_NOTIFICATION_WORKER_ONCE, false),
+    operationsEnabled,
+    ...(operationsToken ? { operationsToken } : {}),
+    operationsObservationWindowMinutes: boundedInt("PHOENIX_OPERATIONS_OBSERVATION_WINDOW_MINUTES", env.PHOENIX_OPERATIONS_OBSERVATION_WINDOW_MINUTES, 15, 1, 1440),
+    operationsStaleLockSeconds: boundedInt("PHOENIX_OPERATIONS_STALE_LOCK_SECONDS", env.PHOENIX_OPERATIONS_STALE_LOCK_SECONDS, 300, 30, 3600),
+    operationsMaxDeadLetters: boundedInt("PHOENIX_OPERATIONS_MAX_DEAD_LETTERS", env.PHOENIX_OPERATIONS_MAX_DEAD_LETTERS, 0, 0, 1000000),
+    operationsMaxStaleLocks: boundedInt("PHOENIX_OPERATIONS_MAX_STALE_LOCKS", env.PHOENIX_OPERATIONS_MAX_STALE_LOCKS, 0, 0, 1000000),
+    operationsMaxDeniedEvents: boundedInt("PHOENIX_OPERATIONS_MAX_DENIED_EVENTS", env.PHOENIX_OPERATIONS_MAX_DENIED_EVENTS, 100, 0, 1000000),
+    passkeyValidationEnabled
   });
 }

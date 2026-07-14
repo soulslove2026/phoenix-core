@@ -23,3 +23,7 @@ PostgreSQL remains authoritative truth. Passkey public keys are stored; private 
 ## Delivery boundary
 
 The application writes encrypted notifications transactionally. A separate worker decrypts only claimed rows, sends idempotent provider requests, retries with bounded exponential delay, and dead-letters exhausted records.
+
+## Phase C assurance architecture
+
+Production assurance is implemented as isolated adapters and operator tooling around the modular monolith: same-origin validation UI, protected operations routes, database-backed aggregate observability, transactional key-rotation utilities, recovery verification, and CI provenance evidence.

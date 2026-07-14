@@ -37,5 +37,6 @@ jobs:
             MPL-2.0
           allow-dependencies-licenses: >-
             pkg:githubactions/actions/checkout,
-            pkg:githubactions/actions/dependency-review-action
+            pkg:githubactions/actions/dependency-review-action,
+            pkg:githubactions/actions/attest
           comment-summary-in-pr: never

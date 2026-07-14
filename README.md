@@ -1,47 +1,42 @@
 # Phoenix Core
 
-**Version:** `3.5.0`  
-**Milestone:** Identity Slice 2 — Phase B, Release 1  
+**Version:** `3.6.0`  
+**Milestone:** Identity Slice 2 Phase C — Production Assurance Foundation Release 1  
 **Status:** Candidate  
 **Production ready:** No
 
-Phase B adds phishing-resistant Passkeys/WebAuthn, TOTP multifactor authentication, one-time recovery codes, breached-password screening, recent-authentication gates, stronger session assurance, and an encrypted transactional notification-delivery worker.
+Phoenix Core is the Node.js 24, TypeScript, Fastify, and PostgreSQL implementation of the Phoenix modular monolith.
 
-## Identity API additions
+## Verified foundation
 
-- `POST /v1/identity/mfa/complete`
-- `GET /v1/identity/mfa/status`
-- `POST /v1/identity/mfa/totp/enrollment/start`
-- `POST /v1/identity/mfa/totp/enrollment/confirm`
-- `POST /v1/identity/mfa/recovery-codes/regenerate`
-- `POST /v1/identity/mfa/totp/disable`
-- `POST /v1/identity/passkeys/registration/options`
-- `POST /v1/identity/passkeys/registration/verify`
-- `POST /v1/identity/passkeys/authentication/options`
-- `POST /v1/identity/passkeys/authentication/verify`
-- `GET /v1/identity/passkeys`
-- `DELETE /v1/identity/passkeys/:passkeyId`
+Identity Slice 2 Phase B is Verified and includes email verification, password recovery, hardened sessions, Passkeys, TOTP MFA, one-time recovery codes, breached-password screening, distributed throttling, immutable security events, and an encrypted notification-delivery worker.
 
-## Security posture
+## Phase C Release 1
 
-- Passkeys require discoverable credentials and user verification.
-- TOTP secrets are encrypted; accepted time steps cannot be replayed.
-- Recovery codes are one-time and stored only as keyed hashes.
-- Passwords are screened with the HIBP k-anonymity range API in production-required mode.
-- Sensitive factor operations require recent authentication and AAL2 where applicable.
-- Notification payloads are encrypted at rest and delivered by a retrying, idempotent worker.
-- Exact manifests, checksums, audits, SBOM, CodeQL, dependency review, migrations, tests, build, and Docker remain mandatory gates.
+- same-origin browser Passkey validation harness for controlled environments;
+- protected aggregate operations monitoring and Prometheus metrics;
+- transactional notification/MFA key rotation with dry-run and explicit apply controls;
+- notification-provider smoke-test command;
+- privacy-preserving incident snapshots;
+- PostgreSQL backup/restore drill and integrity verification;
+- release provenance and SBOM artifact attestations;
+- continued exact manifests, checksums, audits, CodeQL, and clean-workspace enforcement.
 
-## Local verification
+## Commands
 
 ```bash
-npm ci --ignore-scripts --no-audit --no-fund
+npm ci
 npm run check
 npm test
+npm run test:integration
 npm run build
-npm audit --audit-level=high
+npm run migrate
+npm run notifications:worker
+npm run notifications:smoke
+npm run identity:keys:rotate
+npm run incident:snapshot
 ```
 
-## Clean snapshot installation
+## Security boundary
 
-Preserve `.git`, remove every other local repository item, and copy this complete snapshot. The release remains Candidate until GitHub Node.js 24, PostgreSQL 18, Docker, CodeQL, and documentation evidence pass.
+The browser harness is forbidden in production. Operations endpoints require a dedicated secret and private-network protection. Key rotation requires an approved maintenance window. Real-browser/device evidence, real provider delivery, production secret management, alerts, deployment recovery evidence, privacy/legal review, and independent penetration testing remain mandatory.

@@ -34,6 +34,7 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
   const migrationCount = await pool.query<{ count: string }>("select count(*)::text count from phoenix_schema_migrations");
   assert.equal(Number(migrationCount.rows[0]?.count ?? 0), 4);
 
+  const operationsToken = Buffer.alloc(32, 9).toString("base64url");
   const app = await buildApp(loadConfig({
     ...process.env,
     PHOENIX_ENV: "test",
@@ -48,7 +49,10 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
     PHOENIX_IDENTITY_REGISTER_MAX_ATTEMPTS: "20",
     PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS: "30",
     PHOENIX_IDENTITY_ACTION_REQUEST_MAX_ATTEMPTS: "20",
-    PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS: "30"
+    PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS: "30",
+    PHOENIX_OPERATIONS_ENABLED: "true",
+    PHOENIX_OPERATIONS_TOKEN: operationsToken,
+    PHOENIX_PASSKEY_VALIDATION_ENABLED: "true"
   }));
 
   const password = "a unique secure password 2026";
@@ -171,6 +175,34 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
   assert.equal(remaining.statusCode, 200);
   assert.equal(remaining.json().recoveryCodesRemaining, 8);
 
+  const operationsUnauthorized = await app.inject({ method: "GET", url: "/v1/operations/identity/health" });
+  assert.equal(operationsUnauthorized.statusCode, 401);
+
+  const operationsHealth = await app.inject({
+    method: "GET",
+    url: "/v1/operations/identity/health",
+    headers: { authorization: `Bearer ${operationsToken}` }
+  });
+  assert.equal(operationsHealth.statusCode, 200);
+  assert.equal(operationsHealth.json().status, "healthy");
+  assert.equal(operationsHealth.json().migrationCount, 4);
+
+  const operationsMetrics = await app.inject({
+    method: "GET",
+    url: "/v1/operations/identity/metrics",
+    headers: { authorization: `Bearer ${operationsToken}` }
+  });
+  assert.equal(operationsMetrics.statusCode, 200);
+  assert.match(operationsMetrics.headers["content-type"] ?? "", /^text\/plain/u);
+  assert.match(operationsMetrics.body, /phoenix_identity_operational_health 1/u);
+  assert.ok(!operationsMetrics.body.includes("identity@example.com"));
+
+  const passkeyHarness = await app.inject({ method: "GET", url: "/passkey-validation/" });
+  assert.equal(passkeyHarness.statusCode, 200);
+  assert.match(passkeyHarness.body, /Phoenix Passkey Validation/u);
+  assert.match(passkeyHarness.headers["content-security-policy"] ?? "", /default-src 'none'/u);
+  assert.equal(passkeyHarness.headers["cache-control"], "no-store");
+
   const events = await pool.query<{ count: string }>("select count(*)::text count from identity_security_events");
   assert.ok(Number(events.rows[0]?.count ?? 0) >= 14);
   assert.ok(!verificationRow.rows[0]!.ciphertext.includes(verificationPayload.token));
@@ -187,7 +219,9 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
     "/v1/identity/passkeys/registration/verify",
     "/v1/identity/passkeys/authentication/options",
     "/v1/identity/passkeys/authentication/verify",
-    "/v1/identity/passkeys"
+    "/v1/identity/passkeys",
+    "/v1/operations/identity/health",
+    "/v1/operations/identity/metrics"
   ]) assert.ok(schema.paths?.[path], `missing OpenAPI path ${path}`);
 
   await app.close();

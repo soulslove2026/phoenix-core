@@ -95,7 +95,7 @@ jobs:
         run: npm run migrate
       - name: Verify migration idempotency and checksums
         run: npm run migrate
-      - name: Verify Phase B migration ledger
+      - name: Verify Identity migration ledger
         shell: bash
         run: |
           node --input-type=module - <<'NODE'
@@ -112,6 +112,11 @@ jobs:
         run: npm test
       - name: PostgreSQL integration tests
         run: npm run test:integration
+      - name: Validate incident-safe snapshot
+        shell: bash
+        run: |
+          PHOENIX_INCIDENT_SNAPSHOT_PATH="${{ runner.temp }}/incident-snapshot.json" npm run incident:snapshot
+          node -e "const r=JSON.parse(require('node:fs').readFileSync(process.argv[1],'utf8')); if(r.schema!=='phoenix.security-incident-snapshot.v1') process.exit(1)" "${{ runner.temp }}/incident-snapshot.json"
       - name: Production build
         run: npm run build
       - name: Container build

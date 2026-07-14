@@ -12,6 +12,9 @@ import { identityRoutes } from "./identity/routes.js";
 import { PostgresPhaseBIdentityRepository } from "./identity/phase-b-repository.js";
 import { PasskeyManager } from "./identity/passkeys.js";
 import { HibpPasswordBreachChecker } from "./identity/password-breach.js";
+import { IdentityObservabilityRepository } from "./operations/identity-observability.js";
+import { operationsRoutes } from "./operations/routes.js";
+import { passkeyValidationHarness } from "./validation/passkey-harness.js";
 
 declare module "fastify" { interface FastifyInstance { config: AppConfig } }
 
@@ -28,7 +31,8 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
   app.addHook("onRequest", async(request,reply)=>{
     if(config.requireTls&&request.protocol!=="https")return reply.code(400).send({error:"https_required",requestId:request.id});
     reply.header("x-content-type-options","nosniff").header("x-frame-options","DENY").header("referrer-policy","no-referrer").header("cache-control","no-store").header("permissions-policy","camera=(), microphone=(), geolocation=(), publickey-credentials-get=(self)").header("cross-origin-resource-policy","same-origin").header("cross-origin-opener-policy","same-origin");
-    if(!request.url.startsWith("/documentation"))reply.header("content-security-policy","default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    if(request.url.startsWith("/passkey-validation")) reply.header("content-security-policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    else if(!request.url.startsWith("/documentation"))reply.header("content-security-policy","default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
     if(config.environment==="production")reply.header("strict-transport-security","max-age=31536000; includeSubDomains; preload");
   });
   app.addHook("onResponse",async(request,reply)=>{app.log.info({requestId:request.id,method:request.method,path:request.routeOptions.url??"unknown",statusCode:reply.statusCode},"request.completed");});
@@ -37,6 +41,7 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
   if(config.documentationEnabled)await app.register(swaggerUi,{routePrefix:"/documentation"});
   await app.register(databasePlugin,{config});
   await app.register(systemRoutes,{prefix:"/v1/system"});
+  if(config.passkeyValidationEnabled) await app.register(passkeyValidationHarness,{prefix:"/passkey-validation"});
 
   if(app.database.pool){
     if(!config.identityTokenPepper||!config.identityNotificationKey||!config.identityPrivacyKey||!config.identityMfaKey)throw new Error("identity secrets are required");
@@ -62,6 +67,7 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
       }
     });
     await app.register(identityRoutes,{prefix:"/v1/identity",service,limiter:new PostgresIdentityRateLimiter(app.database.pool),privacyKey:config.identityPrivacyKey,rateLimit:{windowSeconds:config.identityRateLimitWindowSeconds,registerMaximum:config.identityRegisterMaxAttempts,loginMaximum:config.identityLoginMaxAttempts,actionRequestMaximum:config.identityActionRequestMaxAttempts,actionConfirmMaximum:config.identityActionConfirmMaxAttempts}});
+    if(config.operationsEnabled&&config.operationsToken) await app.register(operationsRoutes,{prefix:"/v1/operations",repository:new IdentityObservabilityRepository(app.database.pool),token:config.operationsToken,observationWindowMinutes:config.operationsObservationWindowMinutes,staleLockSeconds:config.operationsStaleLockSeconds,maxDeadLetters:config.operationsMaxDeadLetters,maxStaleLocks:config.operationsMaxStaleLocks,maxDeniedEvents:config.operationsMaxDeniedEvents});
   }
   app.setNotFoundHandler(async(request,reply)=>reply.code(404).send({error:"not_found",requestId:request.id}));
   app.setErrorHandler(async(error,request,reply)=>{request.log.error({err:error,requestId:request.id},"request.failed");const candidate=typeof error==="object"&&error!==null&&"statusCode" in error?Number((error as {statusCode?:unknown}).statusCode):500;const statusCode=Number.isInteger(candidate)&&candidate>=400&&candidate<500?candidate:500;return reply.code(statusCode).send({error:statusCode<500?"request_invalid":"internal_error",requestId:request.id});});

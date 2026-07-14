@@ -23,7 +23,7 @@ const ci = fs.readFileSync(".github/workflows/ci.yml", "utf8");
 for (const required of [
   "npm ci --ignore-scripts", "npm audit --omit=dev --audit-level=high", "npm audit --audit-level=high",
   "npm sbom --sbom-format cyclonedx", "npm run security:check", "npm run migrate",
-  "Verify Phase B migration ledger", "npm run test:integration", "docker build",
+  "Verify Identity migration ledger", "npm run test:integration", "docker build",
   "PHOENIX_IDENTITY_MFA_KEY", "PHOENIX_IDENTITY_PASSWORD_BREACH_MODE: disabled"
 ]) if (!ci.includes(required)) fail(`CI security gate missing: ${required}`);
 
@@ -45,6 +45,23 @@ const delivery = fs.readFileSync("src/identity/notification-delivery.ts", "utf8"
 for (const required of ["idempotency-key", 'redirect: "error"', "AbortSignal.timeout", "deadLetter"]) {
   if (!delivery.includes(required)) fail(`Notification delivery control missing: ${required}`);
 }
+const operations = fs.readFileSync("src/operations/routes.ts", "utf8");
+for (const required of ["verifyOperationsBearer", "operations_unauthorized", "text/plain; version=0.0.4"]) if (!operations.includes(required)) fail(`Operations control missing: ${required}`);
+const harness = fs.readFileSync("src/validation/passkey-harness.ts", "utf8");
+for (const required of ["navigator.credentials.create", "navigator.credentials.get", "noindex, nofollow"]) if (!harness.includes(required)) fail(`Passkey validation control missing: ${required}`);
+if (harness.includes("localStorage") || harness.includes("sessionStorage")) fail("Passkey validation harness must not persist session tokens");
+const config = fs.readFileSync("src/config.ts", "utf8");
+if (!config.includes("Passkey validation harness is forbidden in production")) fail("Production harness prohibition missing");
+const rotation = fs.readFileSync("scripts/rotate-identity-keys.ts", "utf8");
+const rotationLibrary = fs.readFileSync("src/identity/key-rotation.ts", "utf8");
+for (const required of ["notification rotation key must change", "MFA rotation key must change", "notification and MFA rotation keys must remain independent"]) {
+  if (!rotationLibrary.includes(required)) fail(`Key-rotation validation missing: ${required}`);
+}
+for (const required of ["validateIdentityEncryptionRotation", "pg_advisory_xact_lock", "ROTATE_IDENTITY_KEYS"]) {
+  if (!rotation.includes(required)) fail(`Key-rotation control missing: ${required}`);
+}
+const assurance = fs.readFileSync(".github/workflows/assurance.yml", "utf8");
+for (const required of ["actions/attest@v4", "pg_dump", "pg_restore", "incident:snapshot"]) if (!assurance.includes(required)) fail(`Assurance gate missing: ${required}`);
 if (!fs.existsSync(".github/workflows/codeql.yml")) fail("CodeQL workflow is missing");
 if (!fs.existsSync(".github/workflows/dependency-review.yml")) fail("Dependency Review workflow is missing");
 if (!fs.existsSync(".github/dependabot.yml")) fail("Dependabot configuration is missing");

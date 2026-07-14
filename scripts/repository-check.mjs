@@ -12,15 +12,21 @@ const required = [
   "src/identity/token-crypto.ts", "src/identity/totp.ts", "src/identity/passkeys.ts",
   "src/identity/distributed-rate-limit.ts", "src/identity/repository.ts",
   "src/identity/phase-b-repository.ts", "src/identity/phase-b-types.ts",
-  "src/identity/notification-delivery.ts", "src/identity/routes.ts", "src/identity/service.ts",
+  "src/identity/notification-delivery.ts", "src/identity/key-rotation.ts", "src/identity/routes.ts", "src/identity/service.ts",
+  "src/operations/auth.ts", "src/operations/identity-observability.ts", "src/operations/routes.ts",
+  "src/validation/passkey-harness.ts",
   "migrations/001_identity.sql", "migrations/002_identity_hardening.sql",
   "migrations/003_identity_slice2.sql", "migrations/004_identity_phase_b.sql",
-  "scripts/migrate.ts", "scripts/notification-worker.ts", "scripts/security-check.mjs",
+  "scripts/migrate.ts", "scripts/notification-worker.ts", "scripts/rotate-identity-keys.ts",
+  "scripts/security-incident-snapshot.ts", "scripts/verify-restored-database.ts", "scripts/notification-provider-smoke.ts", "scripts/security-check.mjs",
   "scripts/dependency-governance-check.mjs", "Dockerfile", "compose.yaml", ".env.example",
   "VERSION.json", "README.md", "SECURITY.md", "ARCHITECTURE.md",
   "docs/IDENTITY_SLICE2_PHASE_B.md", "docs/PASSKEYS_AND_MFA.md",
   "docs/PASSWORD_BREACH_SCREENING.md", "docs/NOTIFICATION_DELIVERY.md",
-  "FILE_MANIFEST.json", "CHECKSUMS.sha256", ".github/workflows/ci.yml",
+  "docs/IDENTITY_SLICE2_PHASE_C.md", "docs/PASSKEY_BROWSER_VALIDATION.md",
+  "docs/OPERATIONS_MONITORING.md", "docs/KEY_ROTATION_RUNBOOK.md",
+  "docs/BACKUP_RESTORE_DRILL.md", "docs/INCIDENT_RESPONSE.md", "docs/ARTIFACT_ATTESTATIONS.md",
+  "FILE_MANIFEST.json", "CHECKSUMS.sha256", ".github/workflows/ci.yml", ".github/workflows/assurance.yml",
   ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml", ".github/dependabot.yml"
 ];
 for (const file of required) if (!fs.existsSync(file)) fail(`Missing required file: ${file}`);
@@ -37,8 +43,8 @@ const system = read("src/routes/system.ts");
 if (pkg.version !== version.version) fail("package.json and VERSION.json versions differ");
 if (lock.version !== version.version || lock.packages?.[""]?.version !== version.version) fail("package-lock version differs");
 if (manifest.repository_version !== version.version) fail("manifest version differs");
-if (!readme.includes("3.5.0") || !readme.includes("Phase B")) fail("README authority is stale");
-for (const requiredControl of ["Passkeys", "TOTP", "breached-password", "notification-delivery worker"]) {
+if (!readme.includes("3.6.0") || !readme.includes("Phase C")) fail("README authority is stale");
+for (const requiredControl of ["Passkeys", "TOTP", "breached-password", "notification-delivery worker", "operations monitoring", "key rotation", "backup and restore", "artifact attestations"]) {
   if (!security.includes(requiredControl)) fail(`SECURITY missing Phase B control: ${requiredControl}`);
 }
 if (!system.includes("app.config.version") || /version:\s*["']3\./.test(system)) fail("system route version is hard-coded");

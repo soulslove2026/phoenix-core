@@ -39,6 +39,7 @@ for (const required of [
   "github/codeql-action/init@v4",
   "github/codeql-action/analyze@v4",
   "actions/dependency-review-action@v5",
+  "actions/attest@v4",
 ]) {
   if (!combined.includes(required)) fail(`Approved workflow reference missing: ${required}`);
 }
@@ -65,6 +66,7 @@ for (const required of [
   "fail-on-scopes: runtime, development, unknown",
   "pkg:githubactions/actions/checkout",
   "pkg:githubactions/actions/dependency-review-action",
+  "pkg:githubactions/actions/attest",
 ]) {
   if (!review.includes(required)) fail(`Dependency Review policy missing: ${required}`);
 }
@@ -84,6 +86,11 @@ for (const required of [
 if (ciWorkflow.includes("> phoenix-core-sbom.cdx.json") ||
     ciWorkflow.includes("path: phoenix-core-sbom.cdx.json")) {
   fail("Generated SBOM evidence must not be written inside the repository");
+}
+
+const assurance = fs.readFileSync(".github/workflows/assurance.yml", "utf8");
+for (const required of ["actions/attest@v4", "pg_dump", "pg_restore", "PHOENIX_RECOVERY_DATABASE_URL", "created_attestation_paths.txt", "Verify governed repository stayed clean"]) {
+  if (!assurance.includes(required)) fail(`Production assurance workflow missing: ${required}`);
 }
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));

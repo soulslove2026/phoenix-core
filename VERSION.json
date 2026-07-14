@@ -1,14 +1,21 @@
 {
-  "version": "3.5.0",
-  "release": "Phoenix Identity Slice 2 Phase B \u2014 Release 1",
-  "release_date": "2026-07-13",
+  "version": "3.6.0",
+  "release": "Phoenix Identity Slice 2 Phase C \u2014 Production Assurance Foundation Release 1",
+  "release_date": "2026-07-14",
   "status": "candidate",
-  "slice": "Identity Slice 2",
-  "security_baseline": "OWASP ASVS 5.0 Level 2 with selected Level 3 identity controls",
   "production_ready": false,
-  "requires_verification": true,
-  "next_gate": "GitHub Actions, CodeQL, recovery/session abuse review, and documentation integrity",
-  "distribution": "clean repository snapshot",
-  "replacement_required": true,
-  "scope": "Passkeys, TOTP MFA, recovery codes, breached-password screening, and production-capable notification delivery"
+  "scope": "Same-origin browser Passkey validation, protected operational monitoring, cryptographic key-rotation tooling, provider smoke testing, backup/restore drills, incident snapshots, and signed artifact attestations",
+  "previous_verified_release": "3.5.1-identity-slice2-phase-b-verification",
+  "verification_required": [
+    "CI",
+    "CodeQL",
+    "Production Assurance Evidence",
+    "Documentation Check",
+    "Documentation Integrity",
+    "real-browser Passkey evidence",
+    "real notification-provider smoke evidence",
+    "approved key-rotation dry run",
+    "deployment recovery drill",
+    "external security review"
+  ]
 }

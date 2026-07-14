@@ -25,3 +25,7 @@ Use independent values for token pepper, notification encryption, privacy pseudo
 ## Remaining production blockers
 
 A real notification-provider account and delivery-observability integration, managed secret rotation, edge bot defense, privileged-administrator isolation, production monitoring, tested backup restoration, external penetration testing, privacy/legal review, and operational incident exercises remain mandatory. The current release is not production-ready.
+
+## Phase C production-assurance controls
+
+Passkey browser validation is staging-only; operations monitoring is bearer-protected and aggregate-only; key rotation is transactional and explicitly confirmed; incident snapshots exclude direct identifiers; backup and restore are exercised; release archives and SBOMs receive artifact attestations.
