@@ -1,15 +1,16 @@
 {
-  "version": "3.6.2",
-  "release": "Phoenix Identity Slice 2 Phase C \u2014 Compiled Tool Ordering Hotfix Release 1",
+  "version": "3.7.0",
+  "release": "Phoenix Identity Slice 2 Phase C \u2014 External Assurance Evidence Kit Release 1",
   "release_date": "2026-07-14",
   "status": "candidate",
   "production_ready": false,
-  "scope": "Build compiled operational tools before CI executes the incident-safe snapshot",
+  "scope": "Sanitized external assurance evidence schemas, validation, quarantine, bundling, and control workflow",
   "previous_verified_release": "3.5.1-identity-slice2-phase-b-verification",
   "verification_required": [
     "CI",
     "CodeQL",
     "Production Assurance Evidence",
+    "External Assurance Control Validation",
     "Documentation Check",
     "Documentation Integrity"
   ],
@@ -23,5 +24,17 @@
   "successful_evidence_on_trigger_commit": {
     "CodeQL": "success in 1 minute 19 seconds",
     "Production Assurance Evidence": "success in 48 seconds"
-  }
+  },
+  "internal_workflow_gates": "verified",
+  "previous_release": "3.6.3-identity-slice2-phase-c-internal-workflow-verification",
+  "external_evidence_required": [
+    "passkey_real_device",
+    "notification_provider_delivery",
+    "key_rotation_exercise",
+    "alert_delivery",
+    "recovery_drill",
+    "incident_response_exercise",
+    "privacy_legal_review",
+    "penetration_test"
+  ]
 }

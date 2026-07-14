@@ -1,0 +1,29 @@
+{
+  "schema": "phoenix.external-assurance-evidence.v1",
+  "id": "f60d9b64-d61c-44dd-8a5e-51dae7e687f3",
+  "kind": "recovery_drill",
+  "status": "blocked",
+  "environment": "staging",
+  "startedAt": "2026-07-14T00:00:00.000Z",
+  "completedAt": "2026-07-14T00:00:00.000Z",
+  "operatorRole": "replace-role",
+  "changeReference": "CHANGE-REFERENCE",
+  "summary": "Replace this blocked template with sanitized evidence after the controlled exercise.",
+  "controls": [
+    "ID2-030",
+    "ID2-037",
+    "ID2-040"
+  ],
+  "measurements": {
+    "backupDigest": "replace",
+    "restorePassed": false,
+    "integrityPassed": false,
+    "rtoSeconds": 0,
+    "rpoSeconds": 0
+  },
+  "artifacts": [],
+  "approvals": [],
+  "notes": [
+    "Do not include names, email addresses, tokens, credentials, or unredacted reports."
+  ]
+}

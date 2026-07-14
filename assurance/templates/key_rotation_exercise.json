@@ -1,0 +1,28 @@
+{
+  "schema": "phoenix.external-assurance-evidence.v1",
+  "id": "34ee206d-4b3f-439a-bf35-9a99409c0952",
+  "kind": "key_rotation_exercise",
+  "status": "blocked",
+  "environment": "staging",
+  "startedAt": "2026-07-14T00:00:00.000Z",
+  "completedAt": "2026-07-14T00:00:00.000Z",
+  "operatorRole": "replace-role",
+  "changeReference": "CHANGE-REFERENCE",
+  "summary": "Replace this blocked template with sanitized evidence after the controlled exercise.",
+  "controls": [
+    "ID2-029",
+    "ID2-037",
+    "ID2-040"
+  ],
+  "measurements": {
+    "dryRunPassed": false,
+    "applyPassed": false,
+    "rollbackPlanValidated": false,
+    "rowsRotated": 0
+  },
+  "artifacts": [],
+  "approvals": [],
+  "notes": [
+    "Do not include names, email addresses, tokens, credentials, or unredacted reports."
+  ]
+}

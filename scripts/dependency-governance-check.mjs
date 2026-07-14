@@ -114,6 +114,13 @@ for (const required of ["actions/attest@v4", "pg_dump", "pg_restore", "PHOENIX_R
   if (!assurance.includes(required)) fail(`Production assurance workflow missing: ${required}`);
 }
 
+
+const externalAssuranceWorkflow = fs.readFileSync(".github/workflows/external-assurance-controls.yml", "utf8");
+for (const required of ["actions/checkout@v6", "actions/setup-node@v6", "actions/upload-artifact@v7", "persist-credentials: false", "assurance/templates", "assurance/evidence", "runner.temp", "Verify governed repository stayed clean"]) {
+  if (!externalAssuranceWorkflow.includes(required)) fail(`External assurance workflow policy missing: ${required}`);
+}
+if (externalAssuranceWorkflow.includes("pull_request_target:")) fail("External assurance workflow must not use pull_request_target");
+
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const packageLock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
 if (packageJson.dependencies?.["@simplewebauthn/server"] !== "13.3.2") fail("SimpleWebAuthn must remain exactly pinned at 13.3.2");

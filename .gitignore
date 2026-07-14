@@ -7,3 +7,7 @@ coverage/
 *.log
 .DS_Store
 .tmp/
+
+assurance/evidence/*
+!assurance/evidence/.gitignore
+!assurance/evidence/README.md

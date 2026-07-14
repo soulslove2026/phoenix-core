@@ -1,0 +1,28 @@
+{
+  "schema": "phoenix.external-assurance-evidence.v1",
+  "id": "849d34f8-bc28-491d-8e07-3f77a28f8184",
+  "kind": "alert_delivery",
+  "status": "blocked",
+  "environment": "staging",
+  "startedAt": "2026-07-14T00:00:00.000Z",
+  "completedAt": "2026-07-14T00:00:00.000Z",
+  "operatorRole": "replace-role",
+  "changeReference": "CHANGE-REFERENCE",
+  "summary": "Replace this blocked template with sanitized evidence after the controlled exercise.",
+  "controls": [
+    "ID2-028",
+    "ID2-037",
+    "ID2-039"
+  ],
+  "measurements": {
+    "channel": "replace",
+    "alertRule": "replace",
+    "deliveryConfirmed": false,
+    "acknowledgmentSeconds": 0
+  },
+  "artifacts": [],
+  "approvals": [],
+  "notes": [
+    "Do not include names, email addresses, tokens, credentials, or unredacted reports."
+  ]
+}

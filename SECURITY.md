@@ -29,3 +29,8 @@ A real notification-provider account and delivery-observability integration, man
 ## Phase C production-assurance controls
 
 Passkey browser validation is staging-only; operations monitoring is bearer-protected and aggregate-only; key rotation is transactional and explicitly confirmed; incident snapshots exclude direct identifiers; backup and restore are exercised; release archives and SBOMs receive artifact attestations.
+
+
+## External assurance evidence
+
+Real-world Passkey, provider, rotation, alert, recovery, incident, privacy/legal, and penetration-test evidence must be sanitized, hashed, approved, and kept outside the source repository. Tooling rejects direct identifiers and common secret-bearing fields.

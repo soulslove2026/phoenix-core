@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.6.2",
+  "version": "3.7.0",
   "private": true,
-  "description": "Phoenix Identity Slice 2 Phase C foundation with compiled operational-tool execution ordering",
+  "description": "Phoenix Phase C external production-assurance evidence collection and validation kit",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -32,7 +32,11 @@
     "incident:snapshot:dev": "tsx scripts/security-incident-snapshot.ts",
     "recovery:verify": "tsx scripts/verify-restored-database.ts",
     "notifications:smoke": "node dist/scripts/notification-provider-smoke.js",
-    "notifications:smoke:dev": "tsx scripts/notification-provider-smoke.ts"
+    "notifications:smoke:dev": "tsx scripts/notification-provider-smoke.ts",
+    "assurance:evidence:init": "node dist/scripts/external-assurance-evidence.js init",
+    "assurance:evidence:validate": "node dist/scripts/external-assurance-evidence.js validate",
+    "assurance:evidence:bundle": "node dist/scripts/external-assurance-evidence.js bundle",
+    "assurance:evidence:dev": "tsx scripts/external-assurance-evidence.ts"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",

@@ -1,0 +1,30 @@
+{
+  "schema": "phoenix.external-assurance-evidence.v1",
+  "id": "c6376f5a-bf46-4a80-aebb-f816963e2bea",
+  "kind": "penetration_test",
+  "status": "blocked",
+  "environment": "external",
+  "startedAt": "2026-07-14T00:00:00.000Z",
+  "completedAt": "2026-07-14T00:00:00.000Z",
+  "operatorRole": "replace-role",
+  "changeReference": "CHANGE-REFERENCE",
+  "summary": "Replace this blocked template with sanitized evidence after the controlled exercise.",
+  "controls": [
+    "ID2-034",
+    "ID2-037",
+    "ID2-041"
+  ],
+  "measurements": {
+    "testingOrganization": "replace",
+    "methodology": "replace",
+    "criticalOpen": 0,
+    "highOpen": 0,
+    "reportDigest": "replace",
+    "retestRequired": true
+  },
+  "artifacts": [],
+  "approvals": [],
+  "notes": [
+    "Do not include names, email addresses, tokens, credentials, or unredacted reports."
+  ]
+}

@@ -1,3 +1,4 @@
+import { PHOENIX_VERSION } from "./version.js";
 export type AppConfig = Readonly<{
   serviceName: string;
   version: string;
@@ -122,7 +123,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   return Object.freeze({
     serviceName: "phoenix-core",
-    version: "3.6.0",
+    version: PHOENIX_VERSION,
     environment,
     host: optionalValue(env.PHOENIX_HOST) ?? "127.0.0.1",
     port,

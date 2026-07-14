@@ -14,3 +14,8 @@ Implemented in Release 1:
 - exact repository authority and clean-workspace enforcement.
 
 The release remains Candidate because real authenticators, real provider credentials, production secrets, production monitoring, and external review cannot be proven inside the source repository alone.
+
+
+## v3.7.0 evidence kit
+
+The remaining Phase C gates now have a governed schema, quarantine rule, validator, deterministic manifest, and dedicated tooling-validation workflow. Completion still requires genuine passed evidence for all eight categories.

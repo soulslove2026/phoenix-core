@@ -27,3 +27,8 @@ The application writes encrypted notifications transactionally. A separate worke
 ## Phase C assurance architecture
 
 Production assurance is implemented as isolated adapters and operator tooling around the modular monolith: same-origin validation UI, protected operations routes, database-backed aggregate observability, transactional key-rotation utilities, recovery verification, and CI provenance evidence.
+
+
+## External assurance boundary
+
+The source repository contains schemas, blocked templates, tests, and validation tooling only. Real assurance artifacts remain in an approved encrypted evidence store and are referenced by redacted SHA-256 metadata.

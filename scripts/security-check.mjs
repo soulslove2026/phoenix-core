@@ -62,6 +62,18 @@ for (const required of ["validateIdentityEncryptionRotation", "pg_advisory_xact_
 }
 const assurance = fs.readFileSync(".github/workflows/assurance.yml", "utf8");
 for (const required of ["actions/attest@v4", "pg_dump", "pg_restore", "incident:snapshot"]) if (!assurance.includes(required)) fail(`Assurance gate missing: ${required}`);
+
+const externalEvidence = fs.readFileSync("src/assurance/external-evidence.ts", "utf8");
+for (const required of ["passkey_real_device", "notification_provider_delivery", "key_rotation_exercise", "alert_delivery", "recovery_drill", "incident_response_exercise", "privacy_legal_review", "penetration_test", "forbidden sensitive field", "passed evidence requires an approval", "passed evidence requires at least one redacted artifact"]) {
+  if (!externalEvidence.includes(required)) fail(`External assurance control missing: ${required}`);
+}
+const externalWorkflow = fs.readFileSync(".github/workflows/external-assurance-controls.yml", "utf8");
+for (const required of ["Validate blocked committed templates", "Prove no real evidence is committed", "external-assurance-template-assessment.json", "Verify governed repository stayed clean"]) {
+  if (!externalWorkflow.includes(required)) fail(`External assurance workflow control missing: ${required}`);
+}
+const evidenceIgnore = fs.readFileSync("assurance/evidence/.gitignore", "utf8");
+if (!evidenceIgnore.includes("*") || !evidenceIgnore.includes("!README.md")) fail("Evidence quarantine ignore policy missing");
+
 if (!fs.existsSync(".github/workflows/codeql.yml")) fail("CodeQL workflow is missing");
 if (!fs.existsSync(".github/workflows/dependency-review.yml")) fail("Dependency Review workflow is missing");
 if (!fs.existsSync(".github/dependabot.yml")) fail("Dependabot configuration is missing");

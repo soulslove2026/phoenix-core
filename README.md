@@ -1,7 +1,7 @@
 # Phoenix Core
 
-**Version:** `3.6.2`  
-**Milestone:** Identity Slice 2 Phase C — Compiled Tool Ordering Hotfix Release 1  
+**Version:** `3.7.0`  
+**Milestone:** Identity Slice 2 Phase C — External Assurance Evidence Kit Release 1
 **Status:** Candidate  
 **Production ready:** No
 
@@ -52,3 +52,8 @@ This preserves the security check and satisfies the Node.js `OutgoingHttpHeader`
 ## v3.6.2 Compiled Tool Ordering Hotfix
 
 CI now runs the production build before executing the compiled incident-safe snapshot utility. It also proves that `dist/scripts/security-incident-snapshot.js` exists before execution.
+
+
+## v3.7.0 External Assurance Evidence Kit
+
+Phoenix now provides strict, sanitized evidence templates and a compiled CLI for the eight remaining real-world Phase C gates. Real evidence is quarantined outside the repository; green tooling workflows do not claim production readiness.
