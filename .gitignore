@@ -4,6 +4,7 @@ coverage/
 .env
 .env.*
 !.env.example
+!deploy/staging/.env.staging.example
 *.log
 .DS_Store
 .tmp/
@@ -11,5 +12,3 @@ coverage/
 assurance/evidence/*
 !assurance/evidence/.gitignore
 !assurance/evidence/README.md
-
-!deploy/staging/.env.staging.example

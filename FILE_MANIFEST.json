@@ -1,8 +1,9 @@
 {
   "repository_version": "3.8.0",
-  "file_count": 125,
+  "file_count": 127,
   "files": [
     ".env.example",
+    ".gitattributes",
     ".github/dependabot.yml",
     ".github/workflows/assurance.yml",
     ".github/workflows/ci.yml",
@@ -63,6 +64,7 @@
     "docs/SECURITY_OPERATIONS.md",
     "docs/STAGING_ASSURANCE_FOUNDATION.md",
     "docs/STAGING_DEPLOYMENT_RUNBOOK.md",
+    "docs/STAGING_FOUNDATION_CI_RECONCILIATION.md",
     "migrations/001_identity.sql",
     "migrations/002_identity_hardening.sql",
     "migrations/003_identity_slice2.sql",

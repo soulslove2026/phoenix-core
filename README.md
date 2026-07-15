@@ -24,6 +24,10 @@ Version 3.8.0 adds a governed preproduction contract:
 - a dedicated GitHub staging-foundation validation workflow;
 - explicit separation between infrastructure readiness and real-world assurance evidence.
 
+## CI reconciliation R2
+
+The release snapshot includes a security-preserving CI reconciliation for governed environment-file tracking, canonical LF checkout, disabled Passkey harness behavior in CI integration tests, and complete non-secret Compose interpolation. See `docs/STAGING_FOUNDATION_CI_RECONCILIATION.md`.
+
 ## Commands
 
 ```bash

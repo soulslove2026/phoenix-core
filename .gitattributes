@@ -1,0 +1,11 @@
+# Phoenix repositories use canonical LF line endings on every platform.
+* text=auto eol=lf
+
+# Preserve binary assets without text conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.zip binary
+*.gz binary

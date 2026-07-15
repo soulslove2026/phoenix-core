@@ -1,6 +1,6 @@
 {
   "version": "3.8.0",
-  "release": "Phoenix Identity Slice 2 Phase C — Staging Assurance Foundation Release 1",
+  "release": "Phoenix Identity Slice 2 Phase C — Staging Assurance Foundation Release 1, CI Reconciliation R2",
   "release_date": "2026-07-15",
   "status": "candidate",
   "production_ready": false,
@@ -26,5 +26,7 @@
     "Staging Foundation Validation",
     "Documentation Check",
     "Documentation Integrity"
-  ]
+  ],
+  "release_revision": "r2-ci-reconciliation",
+  "ci_reconciliation_state": "local-static-and-unit-verified; github-workflow-verification-required"
 }

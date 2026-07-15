@@ -51,7 +51,7 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
     PHOENIX_IDENTITY_ACTION_REQUEST_MAX_ATTEMPTS: "20",
     PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS: "30",
     PHOENIX_OPERATIONS_ENABLED: "true",
-    PHOENIX_OPERATIONS_TOKEN: operationsToken,
+    PHOENIX_OPERATIONS_TOKEN: operationsToken
   }));
 
   const password = "a unique secure password 2026";
@@ -196,11 +196,10 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
   assert.match(operationsMetrics.body, /phoenix_identity_operational_health 1/u);
   assert.ok(!operationsMetrics.body.includes("identity@example.com"));
 
+  assert.equal(app.config.passkeyValidationEnabled, false);
   const passkeyHarness = await app.inject({ method: "GET", url: "/passkey-validation/" });
-  assert.equal(passkeyHarness.statusCode, 200);
-  assert.match(passkeyHarness.body, /Phoenix Passkey Validation/u);
-  assert.match(passkeyHarness.headers["content-security-policy"] ?? "", /default-src 'none'/u);
-  assert.equal(passkeyHarness.headers["cache-control"], "no-store");
+  assert.equal(passkeyHarness.statusCode, 404);
+  assert.equal(passkeyHarness.json().error, "not_found");
 
   const events = await pool.query<{ count: string }>("select count(*)::text count from identity_security_events");
   assert.ok(Number(events.rows[0]?.count ?? 0) >= 14);

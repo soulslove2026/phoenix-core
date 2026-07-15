@@ -6,7 +6,7 @@ const fail = (message) => { console.error(message); process.exitCode = 1; };
 const read = (name) => fs.readFileSync(name, "utf8");
 const parse = (name) => JSON.parse(read(name));
 const required = [
-  "package.json", "package-lock.json", "tsconfig.json", "tsconfig.check.json", "LOCAL_PASSKEY_EVIDENCE_RECONCILIATION.ps1",
+  "package.json", "package-lock.json", "tsconfig.json", "tsconfig.check.json", ".gitattributes", "LOCAL_PASSKEY_EVIDENCE_RECONCILIATION.ps1",
   "src/app.ts", "src/main.ts", "src/config.ts", "src/version.ts",
   "src/assurance/external-evidence.ts",
   "src/identity/email.ts", "src/identity/password.ts", "src/identity/password-breach.ts",
@@ -31,7 +31,7 @@ const required = [
   "docs/BACKUP_RESTORE_DRILL.md", "docs/INCIDENT_RESPONSE.md", "docs/ARTIFACT_ATTESTATIONS.md",
   "docs/PHASE_C_TYPESCRIPT_HEADER_HOTFIX.md",
   "docs/PHASE_C_COMPILED_TOOL_ORDERING_HOTFIX.md", "docs/EXTERNAL_ASSURANCE_EVIDENCE.md",
-  "docs/EXTERNAL_ASSURANCE_PROVENANCE_RECONCILIATION.md", "docs/STAGING_ASSURANCE_FOUNDATION.md", "docs/STAGING_DEPLOYMENT_RUNBOOK.md",
+  "docs/EXTERNAL_ASSURANCE_PROVENANCE_RECONCILIATION.md", "docs/STAGING_ASSURANCE_FOUNDATION.md", "docs/STAGING_DEPLOYMENT_RUNBOOK.md", "docs/STAGING_FOUNDATION_CI_RECONCILIATION.md",
   "assurance/README.md", "assurance/evidence/README.md", "assurance/evidence/.gitignore",
   "FILE_MANIFEST.json", "CHECKSUMS.sha256", ".github/workflows/ci.yml", ".github/workflows/assurance.yml",
   ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml",
@@ -83,7 +83,7 @@ if (JSON.stringify(actual) !== JSON.stringify(listed)) {
   fail("FILE_MANIFEST does not exactly match repository files");
 }
 if (manifest.file_count !== listed.length) fail("manifest count incorrect");
-for (const line of read("CHECKSUMS.sha256").trim().split(/\r?\n/)) {
+for (const line of read("CHECKSUMS.sha256").trim().split(/\r?\n/u)) {
   if (!line) continue;
   const match = /^([a-f0-9]{64})  (.+)$/.exec(line);
   if (!match) { fail(`Invalid checksum: ${line}`); continue; }
