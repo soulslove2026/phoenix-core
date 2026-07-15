@@ -19,3 +19,8 @@ The release remains Candidate because real authenticators, real provider credent
 ## v3.7.0 evidence kit
 
 The remaining Phase C gates now have a governed schema, quarantine rule, validator, deterministic manifest, and dedicated tooling-validation workflow. Completion still requires genuine passed evidence for all eight categories.
+
+
+## v3.7.1 provenance reconciliation
+
+Real-device Passkey validation completed locally, but local execution is not staging evidence. The evidence model now records the local provenance honestly and blocks final closure through an explicit environment-qualification assessment.

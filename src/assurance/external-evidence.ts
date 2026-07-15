@@ -13,7 +13,7 @@ export const externalAssuranceKinds = [
 
 export type ExternalAssuranceKind = (typeof externalAssuranceKinds)[number];
 export type ExternalAssuranceStatus = "passed" | "failed" | "blocked";
-export type ExternalAssuranceEnvironment = "staging" | "production" | "recovery" | "external";
+export type ExternalAssuranceEnvironment = "local" | "staging" | "production" | "recovery" | "external";
 export type EvidenceMeasurement = string | number | boolean;
 
 export type EvidenceArtifact = Readonly<{
@@ -57,8 +57,21 @@ export type ExternalAssuranceAssessment = Readonly<{
   missingKinds: readonly ExternalAssuranceKind[];
   duplicateKinds: readonly ExternalAssuranceKind[];
   notPassedKinds: readonly ExternalAssuranceKind[];
+  nonQualifyingKinds: readonly ExternalAssuranceKind[];
   evidenceCount: number;
 }>;
+
+
+const closureEnvironments: Readonly<Record<ExternalAssuranceKind, readonly ExternalAssuranceEnvironment[]>> = {
+  passkey_real_device: ["staging", "production"],
+  notification_provider_delivery: ["staging", "production"],
+  key_rotation_exercise: ["staging", "production"],
+  alert_delivery: ["staging", "production"],
+  recovery_drill: ["recovery"],
+  incident_response_exercise: ["staging", "production", "recovery"],
+  privacy_legal_review: ["external"],
+  penetration_test: ["external"],
+};
 
 const requiredMeasurements: Readonly<Record<ExternalAssuranceKind, readonly string[]>> = {
   passkey_real_device: ["browserFamily", "browserVersion", "operatingSystem", "authenticatorClass", "registrationPassed", "authenticationPassed", "userVerification", "discoverableCredential"],
@@ -182,7 +195,7 @@ export function validateExternalAssuranceEvidence(input: unknown): ExternalAssur
   const status = stringValue(value.status, "status") as ExternalAssuranceStatus;
   if (!["passed", "failed", "blocked"].includes(status)) throw new Error("invalid evidence status");
   const environment = stringValue(value.environment, "environment") as ExternalAssuranceEnvironment;
-  if (!["staging", "production", "recovery", "external"].includes(environment)) throw new Error("invalid evidence environment");
+  if (!["local", "staging", "production", "recovery", "external"].includes(environment)) throw new Error("invalid evidence environment");
   const startedAt = isoValue(value.startedAt, "startedAt");
   const completedAt = isoValue(value.completedAt, "completedAt");
   if (Date.parse(completedAt) < Date.parse(startedAt)) throw new Error("completedAt must not precede startedAt");
@@ -250,7 +263,21 @@ export function assessExternalAssuranceEvidence(records: readonly ExternalAssura
   const missingKinds = externalAssuranceKinds.filter(kind => !counts.has(kind));
   const duplicateKinds = externalAssuranceKinds.filter(kind => (counts.get(kind) ?? 0) > 1);
   const notPassedKinds = externalAssuranceKinds.filter(kind => records.filter(record => record.kind === kind).some(record => record.status !== "passed") || !counts.has(kind));
-  return Object.freeze({ schema: "phoenix.external-assurance-assessment.v1", complete: missingKinds.length === 0 && duplicateKinds.length === 0 && notPassedKinds.length === 0 && records.length === externalAssuranceKinds.length, requiredKinds: externalAssuranceKinds, presentKinds, missingKinds, duplicateKinds, notPassedKinds, evidenceCount: records.length });
+  const nonQualifyingKinds = externalAssuranceKinds.filter(kind => {
+    const matching = records.filter(record => record.kind === kind && record.status === "passed");
+    return matching.length > 0 && matching.some(record => !closureEnvironments[kind].includes(record.environment));
+  });
+  return Object.freeze({
+    schema: "phoenix.external-assurance-assessment.v1",
+    complete: missingKinds.length === 0 && duplicateKinds.length === 0 && notPassedKinds.length === 0 && nonQualifyingKinds.length === 0 && records.length === externalAssuranceKinds.length,
+    requiredKinds: externalAssuranceKinds,
+    presentKinds,
+    missingKinds,
+    duplicateKinds,
+    notPassedKinds,
+    nonQualifyingKinds,
+    evidenceCount: records.length,
+  });
 }
 
 const templateMeasurements: Readonly<Record<ExternalAssuranceKind, Readonly<Record<string, EvidenceMeasurement>>>> = {
@@ -266,7 +293,7 @@ const templateMeasurements: Readonly<Record<ExternalAssuranceKind, Readonly<Reco
 
 export function createExternalAssuranceTemplate(kind: ExternalAssuranceKind, now = new Date()): ExternalAssuranceEvidence {
   const timestamp = now.toISOString();
-  return Object.freeze({ schema: "phoenix.external-assurance-evidence.v1", id: randomUUID(), kind, status: "blocked", environment: kind === "penetration_test" || kind === "privacy_legal_review" ? "external" : "staging", startedAt: timestamp, completedAt: timestamp, operatorRole: "replace-role", changeReference: "CHANGE-REFERENCE", summary: "Replace this blocked template with sanitized evidence after the controlled exercise.", controls: Object.freeze(["ID2-034"]), measurements: templateMeasurements[kind], artifacts: Object.freeze([]), approvals: Object.freeze([]), notes: Object.freeze(["Do not include names, email addresses, tokens, credentials, or unredacted reports."]) });
+  return Object.freeze({ schema: "phoenix.external-assurance-evidence.v1", id: randomUUID(), kind, status: "blocked", environment: kind === "penetration_test" || kind === "privacy_legal_review" ? "external" : kind === "recovery_drill" ? "recovery" : "staging", startedAt: timestamp, completedAt: timestamp, operatorRole: "replace-role", changeReference: "CHANGE-REFERENCE", summary: "Replace this blocked template with sanitized evidence after the controlled exercise.", controls: Object.freeze(["ID2-034"]), measurements: templateMeasurements[kind], artifacts: Object.freeze([]), approvals: Object.freeze([]), notes: Object.freeze(["Do not include names, email addresses, tokens, credentials, or unredacted reports."]) });
 }
 
 export function canonicalJson(value: unknown): string {

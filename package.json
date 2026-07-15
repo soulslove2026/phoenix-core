@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.7.0",
+  "version": "3.7.1",
   "private": true,
-  "description": "Phoenix Phase C external production-assurance evidence collection and validation kit",
+  "description": "Phoenix Phase C external-assurance evidence provenance reconciliation and closure qualification controls",
   "type": "module",
   "engines": {
     "node": ">=24 <25"

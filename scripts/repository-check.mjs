@@ -6,7 +6,7 @@ const fail = (message) => { console.error(message); process.exitCode = 1; };
 const read = (name) => fs.readFileSync(name, "utf8");
 const parse = (name) => JSON.parse(read(name));
 const required = [
-  "package.json", "package-lock.json", "tsconfig.json", "tsconfig.check.json",
+  "package.json", "package-lock.json", "tsconfig.json", "tsconfig.check.json", "LOCAL_PASSKEY_EVIDENCE_RECONCILIATION.ps1",
   "src/app.ts", "src/main.ts", "src/config.ts", "src/version.ts",
   "src/assurance/external-evidence.ts",
   "src/identity/email.ts", "src/identity/password.ts", "src/identity/password-breach.ts",
@@ -30,6 +30,7 @@ const required = [
   "docs/BACKUP_RESTORE_DRILL.md", "docs/INCIDENT_RESPONSE.md", "docs/ARTIFACT_ATTESTATIONS.md",
   "docs/PHASE_C_TYPESCRIPT_HEADER_HOTFIX.md",
   "docs/PHASE_C_COMPILED_TOOL_ORDERING_HOTFIX.md", "docs/EXTERNAL_ASSURANCE_EVIDENCE.md",
+  "docs/EXTERNAL_ASSURANCE_PROVENANCE_RECONCILIATION.md",
   "assurance/README.md", "assurance/evidence/README.md", "assurance/evidence/.gitignore",
   "FILE_MANIFEST.json", "CHECKSUMS.sha256", ".github/workflows/ci.yml", ".github/workflows/assurance.yml",
   ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml",
@@ -50,11 +51,11 @@ const sourceVersion = read("src/version.ts");
 if (pkg.version !== version.version) fail("package.json and VERSION.json versions differ");
 if (lock.version !== version.version || lock.packages?.[""]?.version !== version.version) fail("package-lock version differs");
 if (manifest.repository_version !== version.version) fail("manifest version differs");
-if (!readme.includes("3.7.0") || !readme.includes("Phase C")) fail("README authority is stale");
+if (!readme.includes("3.7.1") || !readme.includes("Phase C")) fail("README authority is stale");
 for (const requiredControl of ["Passkeys", "TOTP", "breached-password", "notification-delivery worker", "operations monitoring", "key rotation", "backup and restore", "artifact attestations"]) {
   if (!security.includes(requiredControl)) fail(`SECURITY missing Phase B control: ${requiredControl}`);
 }
-if (!sourceVersion.includes('PHOENIX_VERSION = "3.7.0"')) fail("source version authority is stale");
+if (!sourceVersion.includes('PHOENIX_VERSION = "3.7.1"')) fail("source version authority is stale");
 if (!system.includes("app.config.version") || /version:\s*["']3\./.test(system)) fail("system route version is hard-coded");
 if (version.production_ready !== false || version.status !== "candidate") fail("release state is unsafe");
 if (pkg.dependencies?.["@simplewebauthn/server"] !== "13.3.2") fail("SimpleWebAuthn version is not exactly ratified");

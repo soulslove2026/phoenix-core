@@ -1,6 +1,6 @@
 {
-  "repository_version": "3.7.0",
-  "file_count": 111,
+  "repository_version": "3.7.1",
+  "file_count": 113,
   "files": [
     ".env.example",
     ".github/dependabot.yml",
@@ -14,6 +14,7 @@
     "ARCHITECTURE.md",
     "Dockerfile",
     "FILE_MANIFEST.json",
+    "LOCAL_PASSKEY_EVIDENCE_RECONCILIATION.ps1",
     "README.md",
     "SECURITY.md",
     "VERSION.json",
@@ -36,6 +37,7 @@
     "docs/DEPENDENCY_GOVERNANCE.md",
     "docs/DEPENDENCY_UPDATE_RUNBOOK.md",
     "docs/EXTERNAL_ASSURANCE_EVIDENCE.md",
+    "docs/EXTERNAL_ASSURANCE_PROVENANCE_RECONCILIATION.md",
     "docs/IDENTITY_SLICE1.md",
     "docs/IDENTITY_SLICE2.md",
     "docs/IDENTITY_SLICE2_PHASE_B.md",

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessExternalAssuranceEvidence, createExternalAssuranceTemplate, externalAssuranceKinds, validateExternalAssuranceEvidence, type ExternalAssuranceEvidence } from "../src/assurance/external-evidence.js";
+import { assessExternalAssuranceEvidence, createExternalAssuranceTemplate, externalAssuranceKinds, validateExternalAssuranceEvidence, type ExternalAssuranceEvidence, type ExternalAssuranceKind } from "../src/assurance/external-evidence.js";
 
 const digest = "a".repeat(64);
 const passedMeasurements: Record<string, Record<string, string | number | boolean>> = {
@@ -14,9 +14,17 @@ const passedMeasurements: Record<string, Record<string, string | number | boolea
   penetration_test: { testingOrganization: "independent-lab", methodology: "ASVS-based", criticalOpen: 0, highOpen: 0, reportDigest: digest, retestRequired: false },
 };
 
-function passed(kind: (typeof externalAssuranceKinds)[number]): ExternalAssuranceEvidence {
+function passed(kind: ExternalAssuranceKind, environment?: ExternalAssuranceEvidence["environment"]): ExternalAssuranceEvidence {
   const template = createExternalAssuranceTemplate(kind, new Date("2026-07-14T00:00:00.000Z"));
-  return validateExternalAssuranceEvidence({ ...template, status: "passed", controls: ["ID2-037"], measurements: passedMeasurements[kind], artifacts: [{ name: `${kind}-redacted.json`, sha256: digest, mediaType: "application/json", redacted: true, reference: `vault://phoenix/${kind}` }], approvals: [{ role: "independent-reviewer", decision: "approved", at: "2026-07-14T01:00:00.000Z", reference: `APPROVAL-${kind}` }] });
+  return validateExternalAssuranceEvidence({
+    ...template,
+    ...(environment ? { environment } : {}),
+    status: "passed",
+    controls: ["ID2-037"],
+    measurements: passedMeasurements[kind],
+    artifacts: [{ name: `${kind}-redacted.json`, sha256: digest, mediaType: "application/json", redacted: true, reference: `vault://phoenix/${kind}` }],
+    approvals: [{ role: "independent-reviewer", decision: "approved", at: "2026-07-14T01:00:00.000Z", reference: `APPROVAL-${kind}` }],
+  });
 }
 
 test("all blocked templates validate without claiming completion", () => {
@@ -25,14 +33,38 @@ test("all blocked templates validate without claiming completion", () => {
   assert.equal(assessment.complete, false);
   assert.deepEqual(assessment.missingKinds, []);
   assert.equal(assessment.notPassedKinds.length, externalAssuranceKinds.length);
+  assert.deepEqual(assessment.nonQualifyingKinds, []);
 });
 
-test("a unique passed record for every required kind closes the evidence set", () => {
-  const assessment = assessExternalAssuranceEvidence(externalAssuranceKinds.map(passed));
+test("a unique passed record in every qualifying environment closes the evidence set", () => {
+  const assessment = assessExternalAssuranceEvidence(externalAssuranceKinds.map(kind => passed(kind)));
   assert.equal(assessment.complete, true);
   assert.deepEqual(assessment.missingKinds, []);
   assert.deepEqual(assessment.duplicateKinds, []);
   assert.deepEqual(assessment.notPassedKinds, []);
+  assert.deepEqual(assessment.nonQualifyingKinds, []);
+});
+
+test("local real-device evidence validates but cannot close external assurance", () => {
+  const records = externalAssuranceKinds.map(kind => kind === "passkey_real_device" ? passed(kind, "local") : passed(kind));
+  const assessment = assessExternalAssuranceEvidence(records);
+  assert.equal(assessment.complete, false);
+  assert.deepEqual(assessment.notPassedKinds, []);
+  assert.deepEqual(assessment.nonQualifyingKinds, ["passkey_real_device"]);
+});
+
+test("recovery evidence must come from a recovery environment", () => {
+  const records = externalAssuranceKinds.map(kind => kind === "recovery_drill" ? passed(kind, "staging") : passed(kind));
+  const assessment = assessExternalAssuranceEvidence(records);
+  assert.equal(assessment.complete, false);
+  assert.deepEqual(assessment.nonQualifyingKinds, ["recovery_drill"]);
+});
+
+test("templates choose governed default environments", () => {
+  assert.equal(createExternalAssuranceTemplate("passkey_real_device").environment, "staging");
+  assert.equal(createExternalAssuranceTemplate("recovery_drill").environment, "recovery");
+  assert.equal(createExternalAssuranceTemplate("privacy_legal_review").environment, "external");
+  assert.equal(createExternalAssuranceTemplate("penetration_test").environment, "external");
 });
 
 test("sensitive fields and direct identifiers are rejected", () => {

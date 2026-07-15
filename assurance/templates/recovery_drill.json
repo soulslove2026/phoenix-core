@@ -3,7 +3,7 @@
   "id": "f60d9b64-d61c-44dd-8a5e-51dae7e687f3",
   "kind": "recovery_drill",
   "status": "blocked",
-  "environment": "staging",
+  "environment": "recovery",
   "startedAt": "2026-07-14T00:00:00.000Z",
   "completedAt": "2026-07-14T00:00:00.000Z",
   "operatorRole": "replace-role",

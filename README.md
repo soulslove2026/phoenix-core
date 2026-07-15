@@ -1,7 +1,7 @@
 # Phoenix Core
 
-**Version:** `3.7.0`  
-**Milestone:** Identity Slice 2 Phase C — External Assurance Evidence Kit Release 1
+**Version:** `3.7.1`  
+**Milestone:** Identity Slice 2 Phase C — External Evidence Provenance Reconciliation Release 1
 **Status:** Candidate  
 **Production ready:** No
 
@@ -57,3 +57,10 @@ CI now runs the production build before executing the compiled incident-safe sna
 ## v3.7.0 External Assurance Evidence Kit
 
 Phoenix now provides strict, sanitized evidence templates and a compiled CLI for the eight remaining real-world Phase C gates. Real evidence is quarantined outside the repository; green tooling workflows do not claim production readiness.
+
+
+## v3.7.1 Evidence Provenance Reconciliation
+
+Local real-device evidence is now recorded truthfully as `local`. It may validate as passed engineering evidence, but the closure assessment reports it in `nonQualifyingKinds` until the exercise is repeated in staging or production. Recovery-drill templates now use the dedicated `recovery` environment.
+
+The governed `LOCAL_PASSKEY_EVIDENCE_RECONCILIATION.ps1` helper updates the previously collected local record to `environment: local` without displaying evidence contents.

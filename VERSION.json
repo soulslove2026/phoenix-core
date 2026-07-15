@@ -1,11 +1,47 @@
 {
-  "version": "3.7.0",
-  "release": "Phoenix Identity Slice 2 Phase C \u2014 External Assurance Evidence Kit Release 1",
-  "release_date": "2026-07-14",
+  "version": "3.7.1",
+  "release": "Phoenix Identity Slice 2 Phase C \u2014 External Evidence Provenance Reconciliation Release 1",
+  "release_date": "2026-07-15",
   "status": "candidate",
   "production_ready": false,
-  "scope": "Sanitized external assurance evidence schemas, validation, quarantine, bundling, and control workflow",
+  "scope": "Truthful local evidence provenance, environment-qualified closure assessment, and recovery-environment correction",
   "previous_verified_release": "3.5.1-identity-slice2-phase-b-verification",
+  "previous_release": "3.7.0",
+  "internal_workflow_gates": "verified",
+  "external_assurance_state": "incomplete",
+  "local_real_device_passkey_validation": "passed-but-non-qualifying-for-closure",
+  "closure_requirements": {
+    "passkey_real_device": [
+      "staging",
+      "production"
+    ],
+    "notification_provider_delivery": [
+      "staging",
+      "production"
+    ],
+    "key_rotation_exercise": [
+      "staging",
+      "production"
+    ],
+    "alert_delivery": [
+      "staging",
+      "production"
+    ],
+    "recovery_drill": [
+      "recovery"
+    ],
+    "incident_response_exercise": [
+      "staging",
+      "production",
+      "recovery"
+    ],
+    "privacy_legal_review": [
+      "external"
+    ],
+    "penetration_test": [
+      "external"
+    ]
+  },
   "verification_required": [
     "CI",
     "CodeQL",
@@ -13,28 +49,5 @@
     "External Assurance Control Validation",
     "Documentation Check",
     "Documentation Integrity"
-  ],
-  "previous_candidate_release": "3.6.1-identity-slice2-phase-c-typecheck-hotfix-r1",
-  "failed_evidence": {
-    "commit": "c590f6e",
-    "workflow": "CI",
-    "step": "Validate incident-safe snapshot",
-    "diagnostic": "MODULE_NOT_FOUND: dist/scripts/security-incident-snapshot.js"
-  },
-  "successful_evidence_on_trigger_commit": {
-    "CodeQL": "success in 1 minute 19 seconds",
-    "Production Assurance Evidence": "success in 48 seconds"
-  },
-  "internal_workflow_gates": "verified",
-  "previous_release": "3.6.3-identity-slice2-phase-c-internal-workflow-verification",
-  "external_evidence_required": [
-    "passkey_real_device",
-    "notification_provider_delivery",
-    "key_rotation_exercise",
-    "alert_delivery",
-    "recovery_drill",
-    "incident_response_exercise",
-    "privacy_legal_review",
-    "penetration_test"
   ]
 }

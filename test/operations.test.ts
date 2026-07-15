@@ -12,8 +12,8 @@ test("operations bearer comparison and metrics are deterministic", () => {
   assert.equal(verifyOperationsBearer(undefined, token), false);
   assert.equal(snapshotStatus(snapshot, { maxDeadLetters: 0, maxStaleLocks: 0, maxDeniedEvents: 10 }), "healthy");
   assert.equal(snapshotStatus({ ...snapshot, deadLetterNotifications: 1 }, { maxDeadLetters: 0, maxStaleLocks: 0, maxDeniedEvents: 10 }), "degraded");
-  const metrics = prometheusMetrics(snapshot, "healthy", "3.7.0");
+  const metrics = prometheusMetrics(snapshot, "healthy", "3.7.1");
   assert.match(metrics, /phoenix_identity_operational_health 1/u);
-  assert.match(metrics, /phoenix_build_info\{version="3\.7\.0"\} 1/u);
+  assert.match(metrics, /phoenix_build_info\{version="3\.7\.1"\} 1/u);
   assert.doesNotMatch(metrics, /email|token|subject_hash/iu);
 });
