@@ -26,6 +26,8 @@ jobs:
       PHOENIX_IDENTITY_WEBAUTHN_RP_ID: staging.example.test
       PHOENIX_IDENTITY_WEBAUTHN_ORIGINS: https://staging.example.test
       PHOENIX_PASSKEY_VALIDATION_ENABLED: "true"
+      PHOENIX_NOTIFICATION_PROVIDER_URL: "https://notification-provider.example.test/send"
+      PHOENIX_NOTIFICATION_FROM_EMAIL: "no-reply@staging.example.test"
       PHOENIX_IMAGE: ghcr.io/phoenix/example@sha256:0000000000000000000000000000000000000000000000000000000000000000
       PHOENIX_STAGING_DATABASE_USER: staging_ci
       PHOENIX_STAGING_DATABASE_NAME: phoenix_staging

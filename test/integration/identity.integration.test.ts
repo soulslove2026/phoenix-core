@@ -52,7 +52,6 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
     PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS: "30",
     PHOENIX_OPERATIONS_ENABLED: "true",
     PHOENIX_OPERATIONS_TOKEN: operationsToken,
-    PHOENIX_PASSKEY_VALIDATION_ENABLED: "true"
   }));
 
   const password = "a unique secure password 2026";
