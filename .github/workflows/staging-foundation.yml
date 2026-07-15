@@ -1,0 +1,91 @@
+name: Staging Foundation Validation
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staging-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PHOENIX_ENV: staging
+      PHOENIX_DEPLOYMENT_ID: ci-staging-${{ github.run_id }}
+      PHOENIX_REGION: ci-eu-test
+      PHOENIX_BUILD_COMMIT: ${{ github.sha }}
+      PHOENIX_DATABASE_REQUIRED: "true"
+      PHOENIX_DATABASE_URL: postgres://staging-ci:nondefault-password@postgres:5432/phoenix_staging
+      PHOENIX_DOCUMENTATION_ENABLED: "false"
+      PHOENIX_REQUIRE_TLS: "true"
+      PHOENIX_TRUST_PROXY_HOPS: "1"
+      PHOENIX_OPERATIONS_ENABLED: "true"
+      PHOENIX_IDENTITY_PASSWORD_BREACH_MODE: required
+      PHOENIX_IDENTITY_WEBAUTHN_RP_NAME: Phoenix Staging CI
+      PHOENIX_IDENTITY_WEBAUTHN_RP_ID: staging.example.test
+      PHOENIX_IDENTITY_WEBAUTHN_ORIGINS: https://staging.example.test
+      PHOENIX_PASSKEY_VALIDATION_ENABLED: "true"
+      PHOENIX_IMAGE: ghcr.io/phoenix/example@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      PHOENIX_STAGING_DATABASE_USER: staging_ci
+      PHOENIX_STAGING_DATABASE_NAME: phoenix_staging
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      NPM_CONFIG_AUDIT: "false"
+      NPM_CONFIG_FUND: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
+      - name: Generate ephemeral staging contract secrets
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/phoenix-staging-secrets"
+          python - <<'PY'
+          import base64, os, pathlib
+          names = [
+            'identity_token_pepper', 'identity_notification_key', 'identity_privacy_key',
+            'identity_mfa_key', 'operations_token', 'notification_provider_token'
+          ]
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'phoenix-staging-secrets'
+          for name in names:
+              (root / name).write_text(base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('='))
+          (root / 'postgres_password').write_text('nondefault-password')
+          (root / 'database_url').write_text('postgres://staging-ci:nondefault-password@postgres:5432/phoenix_staging')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f"PHOENIX_STAGING_SECRETS_DIR={root}\n")
+              for variable in ['PHOENIX_IDENTITY_TOKEN_PEPPER','PHOENIX_IDENTITY_NOTIFICATION_KEY','PHOENIX_IDENTITY_PRIVACY_KEY','PHOENIX_IDENTITY_MFA_KEY','PHOENIX_OPERATIONS_TOKEN']:
+                  f.write(f"{variable}={base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip('=')}\n")
+          PY
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Repository and security authority
+        run: npm run check
+      - name: Unit tests and production build
+        run: npm test && npm run build
+      - name: Validate staging configuration contract
+        run: npm run staging:preflight
+      - name: Validate provider-neutral Compose model
+        run: docker compose -f deploy/staging/compose.yaml config > "${{ runner.temp }}/phoenix-staging-compose.rendered.yaml"
+      - name: Prove rendered Compose contains no secret values
+        shell: bash
+        run: |
+          ! grep -F "nondefault-password" "${{ runner.temp }}/phoenix-staging-compose.rendered.yaml"
+          ! grep -F "$PHOENIX_IDENTITY_TOKEN_PEPPER" "${{ runner.temp }}/phoenix-staging-compose.rendered.yaml"
+          ! grep -F "$PHOENIX_OPERATIONS_TOKEN" "${{ runner.temp }}/phoenix-staging-compose.rendered.yaml"
+      - name: Upload sanitized staging contract evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: phoenix-staging-foundation-${{ github.sha }}
+          path: ${{ runner.temp }}/phoenix-staging-compose.rendered.yaml
+          if-no-files-found: error
+          retention-days: 30
+      - name: Verify governed repository stayed clean
+        run: test -z "$(git status --porcelain --untracked-files=all)"

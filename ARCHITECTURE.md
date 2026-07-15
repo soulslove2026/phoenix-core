@@ -32,3 +32,9 @@ Production assurance is implemented as isolated adapters and operator tooling ar
 ## External assurance boundary
 
 The source repository contains schemas, blocked templates, tests, and validation tooling only. Real assurance artifacts remain in an approved encrypted evidence store and are referenced by redacted SHA-256 metadata.
+
+## v3.8.0 staging deployment boundary
+
+The staging baseline is provider-neutral. Phoenix Core runs as the same immutable OCI artifact behind one reviewed HTTPS proxy hop, with PostgreSQL isolated on a private data network. Environment-specific behavior is expressed through validated runtime configuration, not code branches. Deployment identity (`deploymentId`, `region`, and source commit) is included in structured logs and health/readiness responses so evidence can be tied to the exact release candidate.
+
+The staging preflight proves configuration posture before deployment. The remote smoke command proves HTTPS routing, security headers, readiness, database availability, optional operations health, and optional Passkey-harness exposure. Real WebAuthn registration and authentication remain a separate human-operated assurance ceremony.

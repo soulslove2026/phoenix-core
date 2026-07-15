@@ -1,8 +1,16 @@
+import { readFileSync } from "node:fs";
+import { isAbsolute } from "node:path";
 import { PHOENIX_VERSION } from "./version.js";
+
+export type PhoenixEnvironment = "local" | "local-compose" | "test" | "ci" | "integration" | "staging" | "production" | "recovery";
+
 export type AppConfig = Readonly<{
   serviceName: string;
   version: string;
-  environment: string;
+  environment: PhoenixEnvironment;
+  deploymentId?: string;
+  region?: string;
+  buildCommit?: string;
   host: string;
   port: number;
   logLevel: "debug" | "info" | "warn" | "error";
@@ -55,6 +63,8 @@ export type AppConfig = Readonly<{
   passkeyValidationEnabled: boolean;
 }>;
 
+const allowedEnvironments: readonly PhoenixEnvironment[] = ["local", "local-compose", "test", "ci", "integration", "staging", "production", "recovery"];
+
 function boundedInt(name: string, value: string | undefined, fallback: number, minimum: number, maximum: number): number {
   const parsed = value === undefined || value.trim() === "" ? fallback : Number(value);
   if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) throw new Error(`${name} must be an integer between ${minimum} and ${maximum}`);
@@ -68,9 +78,34 @@ function booleanValue(name: string, value: string | undefined, fallback: boolean
   throw new Error(`${name} must be true or false`);
 }
 
+function optionalValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function externalValue(env: NodeJS.ProcessEnv, name: string): string | undefined {
+  const direct = optionalValue(env[name]);
+  const fileName = `${name}_FILE`;
+  const file = optionalValue(env[fileName]);
+  if (direct && file) throw new Error(`${name} and ${fileName} are mutually exclusive`);
+  if (!file) return direct;
+  if (!isAbsolute(file)) throw new Error(`${fileName} must be an absolute path`);
+  let value: string;
+  try {
+    value = readFileSync(file, "utf8").trim();
+  } catch {
+    throw new Error(`${fileName} could not be read`);
+  }
+  if (!value) throw new Error(`${fileName} must not be empty`);
+  return value;
+}
+
 function validateBase64UrlSecret(name: string, value: string | undefined, required: boolean): string | undefined {
   const secret = value?.trim();
-  if (!secret) { if (required) throw new Error(`${name} is required when the database is required`); return undefined; }
+  if (!secret) {
+    if (required) throw new Error(`${name} is required when the database is required`);
+    return undefined;
+  }
   if (!/^[A-Za-z0-9_-]+$/u.test(secret)) throw new Error(`${name} must use base64url encoding`);
   if (Buffer.from(secret, "base64url").length < 32) throw new Error(`${name} must decode to at least 32 bytes`);
   return secret;
@@ -83,56 +118,93 @@ function normalizedUrl(name: string, value: string, requireHttps: boolean): stri
   return url.toString().replace(/\/$/u, "");
 }
 
-function optionalValue(value: string | undefined): string | undefined {
-  const normalized = value?.trim();
-  return normalized ? normalized : undefined;
+function deploymentMetadata(name: string, value: string | undefined, required: boolean, pattern: RegExp): string | undefined {
+  const normalized = optionalValue(value);
+  if (!normalized) {
+    if (required) throw new Error(`${name} is required in staging and production`);
+    return undefined;
+  }
+  if (!pattern.test(normalized)) throw new Error(`${name} has an invalid format`);
+  return normalized;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const environment = env.PHOENIX_ENV?.trim();
-  if (!environment) throw new Error("PHOENIX_ENV is required");
+  const environmentValue = env.PHOENIX_ENV?.trim() as PhoenixEnvironment | undefined;
+  if (!environmentValue) throw new Error("PHOENIX_ENV is required");
+  if (!allowedEnvironments.includes(environmentValue)) throw new Error("invalid PHOENIX_ENV");
+  const environment = environmentValue;
+  const staging = environment === "staging";
   const production = environment === "production";
+  const productionLike = staging || production;
+
+  const deploymentId = deploymentMetadata("PHOENIX_DEPLOYMENT_ID", env.PHOENIX_DEPLOYMENT_ID, productionLike, /^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$/u);
+  const region = deploymentMetadata("PHOENIX_REGION", env.PHOENIX_REGION, productionLike, /^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/u);
+  const buildCommit = deploymentMetadata("PHOENIX_BUILD_COMMIT", env.PHOENIX_BUILD_COMMIT, productionLike, /^[a-f0-9]{7,64}$/u);
+
   const port = boundedInt("PHOENIX_PORT", env.PHOENIX_PORT, 3000, 1, 65_535);
   const logLevel = (env.PHOENIX_LOG_LEVEL ?? "info") as AppConfig["logLevel"];
-  if (!["debug","info","warn","error"].includes(logLevel)) throw new Error("invalid PHOENIX_LOG_LEVEL");
-  const databaseRequired = booleanValue("PHOENIX_DATABASE_REQUIRED", env.PHOENIX_DATABASE_REQUIRED, false);
-  const databaseUrl = optionalValue(env.PHOENIX_DATABASE_URL);
-  if (databaseRequired && !databaseUrl) throw new Error("PHOENIX_DATABASE_URL is required when database is required");
+  if (!["debug", "info", "warn", "error"].includes(logLevel)) throw new Error("invalid PHOENIX_LOG_LEVEL");
+
+  const databaseRequired = booleanValue("PHOENIX_DATABASE_REQUIRED", env.PHOENIX_DATABASE_REQUIRED, productionLike);
+  if (productionLike && !databaseRequired) throw new Error("PHOENIX_DATABASE_REQUIRED must be true in staging and production");
+  const databaseUrl = externalValue(env, "PHOENIX_DATABASE_URL");
+  if (databaseRequired && !databaseUrl) throw new Error("PHOENIX_DATABASE_URL or PHOENIX_DATABASE_URL_FILE is required when database is required");
+  if (productionLike && databaseUrl && /^postgres(?:ql)?:\/\/phoenix:phoenix@/iu.test(databaseUrl)) throw new Error("default local database credentials are forbidden in staging and production");
+
+  const requireTls = booleanValue("PHOENIX_REQUIRE_TLS", env.PHOENIX_REQUIRE_TLS, productionLike);
+  if (productionLike && !requireTls) throw new Error("PHOENIX_REQUIRE_TLS must be true in staging and production");
+  const trustProxyHops = boundedInt("PHOENIX_TRUST_PROXY_HOPS", env.PHOENIX_TRUST_PROXY_HOPS, productionLike ? 1 : 0, 0, 2);
+  if (productionLike && trustProxyHops < 1) throw new Error("PHOENIX_TRUST_PROXY_HOPS must be at least 1 in staging and production");
+  const documentationEnabled = booleanValue("PHOENIX_DOCUMENTATION_ENABLED", env.PHOENIX_DOCUMENTATION_ENABLED, !productionLike);
 
   const absoluteTtl = boundedInt("PHOENIX_IDENTITY_SESSION_ABSOLUTE_TTL_SECONDS", env.PHOENIX_IDENTITY_SESSION_ABSOLUTE_TTL_SECONDS, 2_592_000, 900, 7_776_000);
   const idleTtl = boundedInt("PHOENIX_IDENTITY_SESSION_IDLE_TTL_SECONDS", env.PHOENIX_IDENTITY_SESSION_IDLE_TTL_SECONDS, 43_200, 300, 604_800);
   if (idleTtl > absoluteTtl) throw new Error("session idle TTL must not exceed absolute TTL");
 
-  const webauthnRpId = optionalValue(env.PHOENIX_IDENTITY_WEBAUTHN_RP_ID) ?? (production ? "" : "localhost");
-  if (!webauthnRpId) throw new Error("PHOENIX_IDENTITY_WEBAUTHN_RP_ID is required in production");
+  const webauthnRpId = optionalValue(env.PHOENIX_IDENTITY_WEBAUTHN_RP_ID) ?? (productionLike ? "" : "localhost");
+  if (!webauthnRpId) throw new Error("PHOENIX_IDENTITY_WEBAUTHN_RP_ID is required in staging and production");
   if (!/^(localhost|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/iu.test(webauthnRpId)) throw new Error("invalid WebAuthn RP ID");
-  const originSource = optionalValue(env.PHOENIX_IDENTITY_WEBAUTHN_ORIGINS) ?? (production ? "" : "http://localhost:3000");
-  if (!originSource) throw new Error("PHOENIX_IDENTITY_WEBAUTHN_ORIGINS is required in production");
-  const webauthnOrigins = [...new Set(originSource.split(",").map(value=>normalizedUrl("PHOENIX_IDENTITY_WEBAUTHN_ORIGINS",value.trim(),production)))];
+  if (productionLike && webauthnRpId === "localhost") throw new Error("localhost WebAuthn RP ID is forbidden in staging and production");
+  const originSource = optionalValue(env.PHOENIX_IDENTITY_WEBAUTHN_ORIGINS) ?? (productionLike ? "" : "http://localhost:3000");
+  if (!originSource) throw new Error("PHOENIX_IDENTITY_WEBAUTHN_ORIGINS is required in staging and production");
+  const webauthnOrigins = [...new Set(originSource.split(",").map(value => normalizedUrl("PHOENIX_IDENTITY_WEBAUTHN_ORIGINS", value.trim(), productionLike)))];
   if (webauthnOrigins.length === 0 || webauthnOrigins.length > 5) throw new Error("WebAuthn origins must contain between 1 and 5 values");
 
-  const breachMode = (optionalValue(env.PHOENIX_IDENTITY_PASSWORD_BREACH_MODE) ?? (production ? "required" : "disabled")) as AppConfig["identityPasswordBreachMode"];
-  if (!["required","best_effort","disabled"].includes(breachMode)) throw new Error("invalid password breach mode");
+  const breachMode = (optionalValue(env.PHOENIX_IDENTITY_PASSWORD_BREACH_MODE) ?? (productionLike ? "required" : "disabled")) as AppConfig["identityPasswordBreachMode"];
+  if (!["required", "best_effort", "disabled"].includes(breachMode)) throw new Error("invalid password breach mode");
+  if (productionLike && breachMode === "disabled") throw new Error("password breach screening cannot be disabled in staging and production");
 
   const providerUrlRaw = optionalValue(env.PHOENIX_NOTIFICATION_PROVIDER_URL);
-  const providerUrl = providerUrlRaw ? normalizedUrl("PHOENIX_NOTIFICATION_PROVIDER_URL", providerUrlRaw, production) : undefined;
-  const operationsEnabled = booleanValue("PHOENIX_OPERATIONS_ENABLED", env.PHOENIX_OPERATIONS_ENABLED, false);
-  const operationsToken = validateBase64UrlSecret("PHOENIX_OPERATIONS_TOKEN", env.PHOENIX_OPERATIONS_TOKEN, operationsEnabled);
+  const providerUrl = providerUrlRaw ? normalizedUrl("PHOENIX_NOTIFICATION_PROVIDER_URL", providerUrlRaw, productionLike) : undefined;
+  const providerToken = externalValue(env, "PHOENIX_NOTIFICATION_PROVIDER_TOKEN");
+
+  const operationsEnabled = booleanValue("PHOENIX_OPERATIONS_ENABLED", env.PHOENIX_OPERATIONS_ENABLED, productionLike);
+  if (productionLike && !operationsEnabled) throw new Error("PHOENIX_OPERATIONS_ENABLED must be true in staging and production");
+  const operationsToken = validateBase64UrlSecret("PHOENIX_OPERATIONS_TOKEN", externalValue(env, "PHOENIX_OPERATIONS_TOKEN"), operationsEnabled);
+
   const passkeyValidationEnabled = booleanValue("PHOENIX_PASSKEY_VALIDATION_ENABLED", env.PHOENIX_PASSKEY_VALIDATION_ENABLED, false);
-  if (production && passkeyValidationEnabled) throw new Error("Passkey validation harness is forbidden in production");
+  if (passkeyValidationEnabled && !["local", "local-compose", "staging"].includes(environment)) throw new Error("Passkey validation harness is allowed only in local, local-compose, or staging");
+
+  const identityTokenPepper = validateBase64UrlSecret("PHOENIX_IDENTITY_TOKEN_PEPPER", externalValue(env, "PHOENIX_IDENTITY_TOKEN_PEPPER"), databaseRequired);
+  const identityNotificationKey = validateBase64UrlSecret("PHOENIX_IDENTITY_NOTIFICATION_KEY", externalValue(env, "PHOENIX_IDENTITY_NOTIFICATION_KEY"), databaseRequired);
+  const identityPrivacyKey = validateBase64UrlSecret("PHOENIX_IDENTITY_PRIVACY_KEY", externalValue(env, "PHOENIX_IDENTITY_PRIVACY_KEY"), databaseRequired);
+  const identityMfaKey = validateBase64UrlSecret("PHOENIX_IDENTITY_MFA_KEY", externalValue(env, "PHOENIX_IDENTITY_MFA_KEY"), databaseRequired);
 
   return Object.freeze({
     serviceName: "phoenix-core",
     version: PHOENIX_VERSION,
     environment,
+    ...(deploymentId ? { deploymentId } : {}),
+    ...(region ? { region } : {}),
+    ...(buildCommit ? { buildCommit } : {}),
     host: optionalValue(env.PHOENIX_HOST) ?? "127.0.0.1",
     port,
     logLevel,
     databaseRequired,
     ...(databaseUrl ? { databaseUrl } : {}),
-    documentationEnabled: booleanValue("PHOENIX_DOCUMENTATION_ENABLED", env.PHOENIX_DOCUMENTATION_ENABLED, !production),
-    requireTls: booleanValue("PHOENIX_REQUIRE_TLS", env.PHOENIX_REQUIRE_TLS, production),
-    trustProxyHops: boundedInt("PHOENIX_TRUST_PROXY_HOPS", env.PHOENIX_TRUST_PROXY_HOPS, 0, 0, 2),
+    documentationEnabled,
+    requireTls,
+    trustProxyHops,
     identitySessionAbsoluteTtlSeconds: absoluteTtl,
     identitySessionIdleTtlSeconds: idleTtl,
     identityVerificationTtlSeconds: boundedInt("PHOENIX_IDENTITY_VERIFICATION_TTL_SECONDS", env.PHOENIX_IDENTITY_VERIFICATION_TTL_SECONDS, 86_400, 300, 172_800),
@@ -142,10 +214,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     identityLoginMaxAttempts: boundedInt("PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS", env.PHOENIX_IDENTITY_LOGIN_MAX_ATTEMPTS, 10, 1, 1_000),
     identityActionRequestMaxAttempts: boundedInt("PHOENIX_IDENTITY_ACTION_REQUEST_MAX_ATTEMPTS", env.PHOENIX_IDENTITY_ACTION_REQUEST_MAX_ATTEMPTS, 5, 1, 100),
     identityActionConfirmMaxAttempts: boundedInt("PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS", env.PHOENIX_IDENTITY_ACTION_CONFIRM_MAX_ATTEMPTS, 10, 1, 100),
-    ...(validateBase64UrlSecret("PHOENIX_IDENTITY_TOKEN_PEPPER", env.PHOENIX_IDENTITY_TOKEN_PEPPER, databaseRequired) ? { identityTokenPepper: env.PHOENIX_IDENTITY_TOKEN_PEPPER!.trim() } : {}),
-    ...(validateBase64UrlSecret("PHOENIX_IDENTITY_NOTIFICATION_KEY", env.PHOENIX_IDENTITY_NOTIFICATION_KEY, databaseRequired) ? { identityNotificationKey: env.PHOENIX_IDENTITY_NOTIFICATION_KEY!.trim() } : {}),
-    ...(validateBase64UrlSecret("PHOENIX_IDENTITY_PRIVACY_KEY", env.PHOENIX_IDENTITY_PRIVACY_KEY, databaseRequired) ? { identityPrivacyKey: env.PHOENIX_IDENTITY_PRIVACY_KEY!.trim() } : {}),
-    ...(validateBase64UrlSecret("PHOENIX_IDENTITY_MFA_KEY", env.PHOENIX_IDENTITY_MFA_KEY, databaseRequired) ? { identityMfaKey: env.PHOENIX_IDENTITY_MFA_KEY!.trim() } : {}),
+    ...(identityTokenPepper ? { identityTokenPepper } : {}),
+    ...(identityNotificationKey ? { identityNotificationKey } : {}),
+    ...(identityPrivacyKey ? { identityPrivacyKey } : {}),
+    ...(identityMfaKey ? { identityMfaKey } : {}),
     identityRecentAuthenticationSeconds: boundedInt("PHOENIX_IDENTITY_RECENT_AUTH_SECONDS", env.PHOENIX_IDENTITY_RECENT_AUTH_SECONDS, 600, 60, 3_600),
     identityMfaTransactionTtlSeconds: boundedInt("PHOENIX_IDENTITY_MFA_TRANSACTION_TTL_SECONDS", env.PHOENIX_IDENTITY_MFA_TRANSACTION_TTL_SECONDS, 300, 60, 900),
     identityMfaMaxAttempts: boundedInt("PHOENIX_IDENTITY_MFA_MAX_ATTEMPTS", env.PHOENIX_IDENTITY_MFA_MAX_ATTEMPTS, 5, 1, 10),
@@ -160,7 +232,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     identityPwnedPasswordsBaseUrl: normalizedUrl("PHOENIX_IDENTITY_PWNED_PASSWORDS_BASE_URL", optionalValue(env.PHOENIX_IDENTITY_PWNED_PASSWORDS_BASE_URL) ?? "https://api.pwnedpasswords.com", true),
     identityPwnedPasswordsTimeoutMs: boundedInt("PHOENIX_IDENTITY_PWNED_PASSWORDS_TIMEOUT_MS", env.PHOENIX_IDENTITY_PWNED_PASSWORDS_TIMEOUT_MS, 3_000, 500, 10_000),
     ...(providerUrl ? { notificationProviderUrl: providerUrl } : {}),
-    ...(optionalValue(env.PHOENIX_NOTIFICATION_PROVIDER_TOKEN) ? { notificationProviderToken: env.PHOENIX_NOTIFICATION_PROVIDER_TOKEN!.trim() } : {}),
+    ...(providerToken ? { notificationProviderToken: providerToken } : {}),
     ...(optionalValue(env.PHOENIX_NOTIFICATION_FROM_EMAIL) ? { notificationFromEmail: env.PHOENIX_NOTIFICATION_FROM_EMAIL!.trim() } : {}),
     notificationProviderTimeoutMs: boundedInt("PHOENIX_NOTIFICATION_PROVIDER_TIMEOUT_MS", env.PHOENIX_NOTIFICATION_PROVIDER_TIMEOUT_MS, 5_000, 500, 30_000),
     notificationWorkerBatchSize: boundedInt("PHOENIX_NOTIFICATION_WORKER_BATCH_SIZE", env.PHOENIX_NOTIFICATION_WORKER_BATCH_SIZE, 25, 1, 100),
@@ -171,9 +243,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ...(operationsToken ? { operationsToken } : {}),
     operationsObservationWindowMinutes: boundedInt("PHOENIX_OPERATIONS_OBSERVATION_WINDOW_MINUTES", env.PHOENIX_OPERATIONS_OBSERVATION_WINDOW_MINUTES, 15, 1, 1440),
     operationsStaleLockSeconds: boundedInt("PHOENIX_OPERATIONS_STALE_LOCK_SECONDS", env.PHOENIX_OPERATIONS_STALE_LOCK_SECONDS, 300, 30, 3600),
-    operationsMaxDeadLetters: boundedInt("PHOENIX_OPERATIONS_MAX_DEAD_LETTERS", env.PHOENIX_OPERATIONS_MAX_DEAD_LETTERS, 0, 0, 1000000),
-    operationsMaxStaleLocks: boundedInt("PHOENIX_OPERATIONS_MAX_STALE_LOCKS", env.PHOENIX_OPERATIONS_MAX_STALE_LOCKS, 0, 0, 1000000),
-    operationsMaxDeniedEvents: boundedInt("PHOENIX_OPERATIONS_MAX_DENIED_EVENTS", env.PHOENIX_OPERATIONS_MAX_DENIED_EVENTS, 100, 0, 1000000),
+    operationsMaxDeadLetters: boundedInt("PHOENIX_OPERATIONS_MAX_DEAD_LETTERS", env.PHOENIX_OPERATIONS_MAX_DEAD_LETTERS, 0, 0, 1_000_000),
+    operationsMaxStaleLocks: boundedInt("PHOENIX_OPERATIONS_MAX_STALE_LOCKS", env.PHOENIX_OPERATIONS_MAX_STALE_LOCKS, 0, 0, 1_000_000),
+    operationsMaxDeniedEvents: boundedInt("PHOENIX_OPERATIONS_MAX_DENIED_EVENTS", env.PHOENIX_OPERATIONS_MAX_DENIED_EVENTS, 100, 0, 1_000_000),
     passkeyValidationEnabled
   });
 }

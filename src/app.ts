@@ -20,7 +20,7 @@ declare module "fastify" { interface FastifyInstance { config: AppConfig } }
 
 export async function buildApp(config: AppConfig = loadConfig()): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: { level: config.logLevel, base: { service: config.serviceName, version: config.version, environment: config.environment } },
+    logger: { level: config.logLevel, base: { service: config.serviceName, version: config.version, environment: config.environment, ...(config.deploymentId ? { deploymentId: config.deploymentId } : {}), ...(config.region ? { region: config.region } : {}), ...(config.buildCommit ? { buildCommit: config.buildCommit } : {}) } },
     trustProxy: config.trustProxyHops === 0 ? false : config.trustProxyHops,
     requestIdHeader: "x-request-id",
     genReqId: request => { const value=request.headers["x-request-id"]; return typeof value==="string"&&/^[A-Za-z0-9._-]{1,128}$/u.test(value)?value:randomUUID(); },
@@ -33,7 +33,8 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
     reply.header("x-content-type-options","nosniff").header("x-frame-options","DENY").header("referrer-policy","no-referrer").header("cache-control","no-store").header("permissions-policy","camera=(), microphone=(), geolocation=(), publickey-credentials-get=(self)").header("cross-origin-resource-policy","same-origin").header("cross-origin-opener-policy","same-origin");
     if(request.url.startsWith("/passkey-validation")) reply.header("content-security-policy","default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
     else if(!request.url.startsWith("/documentation"))reply.header("content-security-policy","default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
-    if(config.environment==="production")reply.header("strict-transport-security","max-age=31536000; includeSubDomains; preload");
+    if(config.environment==="production") reply.header("strict-transport-security","max-age=31536000; includeSubDomains; preload");
+    else if(config.environment==="staging") reply.header("strict-transport-security","max-age=86400");
   });
   app.addHook("onResponse",async(request,reply)=>{app.log.info({requestId:request.id,method:request.method,path:request.routeOptions.url??"unknown",statusCode:reply.statusCode},"request.completed");});
 

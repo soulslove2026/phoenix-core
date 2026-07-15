@@ -11,6 +11,7 @@ test("health is schema-valid", async () => {
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().status, "healthy");
   assert.equal(response.json().version, config.version);
+  assert.equal(response.json().environment, "test");
   await app.close();
 });
 

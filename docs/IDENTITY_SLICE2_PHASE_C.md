@@ -24,3 +24,7 @@ The remaining Phase C gates now have a governed schema, quarantine rule, validat
 ## v3.7.1 provenance reconciliation
 
 Real-device Passkey validation completed locally, but local execution is not staging evidence. The evidence model now records the local provenance honestly and blocks final closure through an explicit environment-qualification assessment.
+
+## v3.8.0 staging assurance foundation
+
+Phoenix now has a fail-closed staging environment contract, secret-file loading, immutable deployment identity, a provider-neutral staging Compose model, a sanitized preflight command, a remote smoke command, and a dedicated staging validation workflow. This foundation authorizes deployment rehearsal only. Phase C remains Candidate until real staging Passkey evidence and the seven other qualifying external-assurance records are completed.

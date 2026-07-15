@@ -34,3 +34,14 @@ Passkey browser validation is staging-only; operations monitoring is bearer-prot
 ## External assurance evidence
 
 Real-world Passkey, provider, rotation, alert, recovery, incident, privacy/legal, and penetration-test evidence must be sanitized, hashed, approved, and kept outside the source repository. Tooling rejects direct identifiers and common secret-bearing fields.
+
+## v3.8.0 governed staging controls
+
+- Staging is a validated production-like environment identity, not an arbitrary string.
+- TLS enforcement, trusted proxy configuration, deployment identity, database availability, operations monitoring, HTTPS WebAuthn origins, and non-local RP IDs are mandatory.
+- Password-breach screening cannot be disabled in staging or production.
+- Default local PostgreSQL credentials are rejected in staging and production.
+- Deployed secrets may be mounted through absolute `_FILE` paths and are never emitted by preflight or smoke reports.
+- The Passkey validation harness is disabled by default and is permitted only in local, local-compose, or staging.
+- The staging application binds to loopback in the provider-neutral Compose model; PostgreSQL remains on an internal-only network.
+- A valid staging deployment does not itself prove a Passkey ceremony or authorize production.

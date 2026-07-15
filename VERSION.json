@@ -1,52 +1,29 @@
 {
-  "version": "3.7.1",
-  "release": "Phoenix Identity Slice 2 Phase C \u2014 External Evidence Provenance Reconciliation Release 1",
+  "version": "3.8.0",
+  "release": "Phoenix Identity Slice 2 Phase C — Staging Assurance Foundation Release 1",
   "release_date": "2026-07-15",
   "status": "candidate",
   "production_ready": false,
-  "scope": "Truthful local evidence provenance, environment-qualified closure assessment, and recovery-environment correction",
-  "previous_verified_release": "3.5.1-identity-slice2-phase-b-verification",
-  "previous_release": "3.7.0",
-  "internal_workflow_gates": "verified",
+  "scope": "Governed HTTPS staging configuration, secret-file loading, immutable deployment identity, deployment templates, preflight validation, and sanitized smoke evidence",
+  "previous_verified_release": "3.7.1-evidence-provenance-reconciliation-workflow-verification",
+  "previous_release": "3.7.1",
+  "internal_workflow_gates": "verification-required",
   "external_assurance_state": "incomplete",
+  "staging_foundation_state": "candidate",
   "local_real_device_passkey_validation": "passed-but-non-qualifying-for-closure",
-  "closure_requirements": {
-    "passkey_real_device": [
-      "staging",
-      "production"
-    ],
-    "notification_provider_delivery": [
-      "staging",
-      "production"
-    ],
-    "key_rotation_exercise": [
-      "staging",
-      "production"
-    ],
-    "alert_delivery": [
-      "staging",
-      "production"
-    ],
-    "recovery_drill": [
-      "recovery"
-    ],
-    "incident_response_exercise": [
-      "staging",
-      "production",
-      "recovery"
-    ],
-    "privacy_legal_review": [
-      "external"
-    ],
-    "penetration_test": [
-      "external"
-    ]
-  },
+  "staging_passkey_validation": "pending-deployment-and-real-device-ceremony",
+  "release_boundaries": [
+    "No cloud provider or domain is selected by this release",
+    "No staging deployment is claimed until an operator deploys the verified immutable image behind HTTPS",
+    "No external assurance record is changed to passed by infrastructure templates alone",
+    "Production readiness remains false"
+  ],
   "verification_required": [
     "CI",
     "CodeQL",
     "Production Assurance Evidence",
     "External Assurance Control Validation",
+    "Staging Foundation Validation",
     "Documentation Check",
     "Documentation Integrity"
   ]

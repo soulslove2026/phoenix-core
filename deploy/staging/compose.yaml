@@ -1,0 +1,143 @@
+name: phoenix-staging
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PHOENIX_STAGING_DATABASE_USER:?required}
+      POSTGRES_DB: ${PHOENIX_STAGING_DATABASE_NAME:?required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - phoenix_staging_pg:/var/lib/postgresql
+    networks:
+      - data
+    security_opt:
+      - no-new-privileges:true
+
+  phoenix-core:
+    image: ${PHOENIX_IMAGE:?immutable image reference required}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: &phoenix-staging-environment
+      PHOENIX_ENV: staging
+      PHOENIX_DEPLOYMENT_ID: ${PHOENIX_DEPLOYMENT_ID:?required}
+      PHOENIX_REGION: ${PHOENIX_REGION:?required}
+      PHOENIX_BUILD_COMMIT: ${PHOENIX_BUILD_COMMIT:?required}
+      PHOENIX_HOST: 0.0.0.0
+      PHOENIX_PORT: 3000
+      PHOENIX_LOG_LEVEL: ${PHOENIX_LOG_LEVEL:-info}
+      PHOENIX_DATABASE_REQUIRED: "true"
+      PHOENIX_DATABASE_URL_FILE: /run/secrets/database_url
+      PHOENIX_IDENTITY_TOKEN_PEPPER_FILE: /run/secrets/identity_token_pepper
+      PHOENIX_IDENTITY_NOTIFICATION_KEY_FILE: /run/secrets/identity_notification_key
+      PHOENIX_IDENTITY_PRIVACY_KEY_FILE: /run/secrets/identity_privacy_key
+      PHOENIX_IDENTITY_MFA_KEY_FILE: /run/secrets/identity_mfa_key
+      PHOENIX_OPERATIONS_ENABLED: "true"
+      PHOENIX_OPERATIONS_TOKEN_FILE: /run/secrets/operations_token
+      PHOENIX_DOCUMENTATION_ENABLED: "false"
+      PHOENIX_REQUIRE_TLS: "true"
+      PHOENIX_TRUST_PROXY_HOPS: "1"
+      PHOENIX_IDENTITY_PASSWORD_BREACH_MODE: required
+      PHOENIX_IDENTITY_WEBAUTHN_RP_NAME: ${PHOENIX_IDENTITY_WEBAUTHN_RP_NAME:-Phoenix Staging}
+      PHOENIX_IDENTITY_WEBAUTHN_RP_ID: ${PHOENIX_IDENTITY_WEBAUTHN_RP_ID:?required}
+      PHOENIX_IDENTITY_WEBAUTHN_ORIGINS: ${PHOENIX_IDENTITY_WEBAUTHN_ORIGINS:?required}
+      PHOENIX_PASSKEY_VALIDATION_ENABLED: ${PHOENIX_PASSKEY_VALIDATION_ENABLED:-false}
+    secrets:
+      - database_url
+      - identity_token_pepper
+      - identity_notification_key
+      - identity_privacy_key
+      - identity_mfa_key
+      - operations_token
+    command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/src/main.js"]
+    ports:
+      - "127.0.0.1:${PHOENIX_STAGING_APP_PORT:-3000}:3000"
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/v1/system/ready',{headers:{'x-forwarded-proto':'https'}}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    read_only: true
+    init: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    pids_limit: 200
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  notification-worker:
+    image: ${PHOENIX_IMAGE:?immutable image reference required}
+    profiles: ["notifications"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *phoenix-staging-environment
+      PHOENIX_NOTIFICATION_PROVIDER_URL: ${PHOENIX_NOTIFICATION_PROVIDER_URL:?required}
+      PHOENIX_NOTIFICATION_PROVIDER_TOKEN_FILE: /run/secrets/notification_provider_token
+      PHOENIX_NOTIFICATION_FROM_EMAIL: ${PHOENIX_NOTIFICATION_FROM_EMAIL:?required}
+    secrets:
+      - database_url
+      - identity_token_pepper
+      - identity_notification_key
+      - identity_privacy_key
+      - identity_mfa_key
+      - operations_token
+      - notification_provider_token
+    command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/scripts/notification-worker.js"]
+    read_only: true
+    init: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    pids_limit: 100
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data
+
+secrets:
+  postgres_password:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/postgres_password
+  database_url:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/database_url
+  identity_token_pepper:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/identity_token_pepper
+  identity_notification_key:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/identity_notification_key
+  identity_privacy_key:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/identity_privacy_key
+  identity_mfa_key:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/identity_mfa_key
+  operations_token:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/operations_token
+  notification_provider_token:
+    file: ${PHOENIX_STAGING_SECRETS_DIR:?required}/notification_provider_token
+
+volumes:
+  phoenix_staging_pg: {}
+
+networks:
+  edge: {}
+  data:
+    internal: true

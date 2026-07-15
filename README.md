@@ -1,7 +1,7 @@
 # Phoenix Core
 
-**Version:** `3.7.1`  
-**Milestone:** Identity Slice 2 Phase C — External Evidence Provenance Reconciliation Release 1
+**Version:** `3.8.0`  
+**Milestone:** Identity Slice 2 Phase C — Staging Assurance Foundation Release 1  
 **Status:** Candidate  
 **Production ready:** No
 
@@ -9,18 +9,20 @@ Phoenix Core is the Node.js 24, TypeScript, Fastify, and PostgreSQL implementati
 
 ## Verified foundation
 
-Identity Slice 2 Phase B is Verified and includes email verification, password recovery, hardened sessions, Passkeys, TOTP MFA, one-time recovery codes, breached-password screening, distributed throttling, immutable security events, and an encrypted notification-delivery worker.
+Identity Slice 2 Phase B and the Phase C internal workflows are verified. Local Windows Hello Passkey registration and authentication passed as truthful local engineering evidence, but remain non-qualifying for staging or production closure.
 
-## Phase C Release 1
+## Staging Assurance Foundation
 
-- same-origin browser Passkey validation harness for controlled environments;
-- protected aggregate operations monitoring and Prometheus metrics;
-- transactional notification/MFA key rotation with dry-run and explicit apply controls;
-- notification-provider smoke-test command;
-- privacy-preserving incident snapshots;
-- PostgreSQL backup/restore drill and integrity verification;
-- release provenance and SBOM artifact attestations;
-- continued exact manifests, checksums, audits, CodeQL, and clean-workspace enforcement.
+Version 3.8.0 adds a governed preproduction contract:
+
+- explicit, validated staging environment identity;
+- mandatory HTTPS proxy posture, database, operations monitoring, and deployment metadata;
+- non-local WebAuthn RP ID and HTTPS-only origins;
+- secret-file loading for deployed environments;
+- provider-neutral Docker Compose staging topology;
+- sanitized staging preflight and remote smoke commands;
+- a dedicated GitHub staging-foundation validation workflow;
+- explicit separation between infrastructure readiness and real-world assurance evidence.
 
 ## Commands
 
@@ -30,37 +32,15 @@ npm run check
 npm test
 npm run test:integration
 npm run build
-npm run migrate
-npm run notifications:worker
-npm run notifications:smoke
-npm run identity:keys:rotate
-npm run incident:snapshot
+npm run staging:preflight
+npm run staging:smoke
+npm run assurance:evidence:validate -- <external-evidence-directory>
 ```
 
 ## Security boundary
 
-The browser harness is forbidden in production. Operations endpoints require a dedicated secret and private-network protection. Key rotation requires an approved maintenance window. Real-browser/device evidence, real provider delivery, production secret management, alerts, deployment recovery evidence, privacy/legal review, and independent penetration testing remain mandatory.
+The staging Passkey harness is disabled by default and may be enabled only during an approved ceremony. It is forbidden outside local, local-compose, and staging. Staging secrets, database, provider credentials, and test data must be independent from every other environment. A green staging workflow proves the deployment contract, not a completed Passkey ceremony or production readiness.
 
+## Next gate
 
-## v3.6.1 TypeScript Hotfix
-
-The Passkey validation harness test now proves that `x-robots-tag` is a string before applying the `noindex` regular-expression assertion.
-
-This preserves the security check and satisfies the Node.js `OutgoingHttpHeader` union type, which can also represent numbers or string arrays. The release remains Candidate and not production-ready.
-
-
-## v3.6.2 Compiled Tool Ordering Hotfix
-
-CI now runs the production build before executing the compiled incident-safe snapshot utility. It also proves that `dist/scripts/security-incident-snapshot.js` exists before execution.
-
-
-## v3.7.0 External Assurance Evidence Kit
-
-Phoenix now provides strict, sanitized evidence templates and a compiled CLI for the eight remaining real-world Phase C gates. Real evidence is quarantined outside the repository; green tooling workflows do not claim production readiness.
-
-
-## v3.7.1 Evidence Provenance Reconciliation
-
-Local real-device evidence is now recorded truthfully as `local`. It may validate as passed engineering evidence, but the closure assessment reports it in `nonQualifyingKinds` until the exercise is repeated in staging or production. Recovery-drill templates now use the dedicated `recovery` environment.
-
-The governed `LOCAL_PASSKEY_EVIDENCE_RECONCILIATION.ps1` helper updates the previously collected local record to `environment: local` without displaying evidence contents.
+Deploy the verified immutable image behind a real HTTPS staging domain, run preflight and smoke validation, complete real-device Passkey registration and authentication, sanitize the evidence, and validate it as `environment: staging`.

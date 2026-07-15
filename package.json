@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.7.1",
+  "version": "3.8.0",
   "private": true,
-  "description": "Phoenix Phase C external-assurance evidence provenance reconciliation and closure qualification controls",
+  "description": "Phoenix governed staging assurance foundation for Identity Slice 2 Phase C",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -36,7 +36,11 @@
     "assurance:evidence:init": "node dist/scripts/external-assurance-evidence.js init",
     "assurance:evidence:validate": "node dist/scripts/external-assurance-evidence.js validate",
     "assurance:evidence:bundle": "node dist/scripts/external-assurance-evidence.js bundle",
-    "assurance:evidence:dev": "tsx scripts/external-assurance-evidence.ts"
+    "assurance:evidence:dev": "tsx scripts/external-assurance-evidence.ts",
+    "staging:preflight": "node dist/scripts/staging-preflight.js",
+    "staging:preflight:dev": "tsx scripts/staging-preflight.ts",
+    "staging:smoke": "node dist/scripts/staging-smoke.js",
+    "staging:smoke:dev": "tsx scripts/staging-smoke.ts"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",

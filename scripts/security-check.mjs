@@ -13,7 +13,7 @@ function walk(directory = ".") {
   return files;
 }
 for (const file of walk()) {
-  if (/(^|\/)\.env($|\.)/.test(file) && file !== ".env.example") fail(`Forbidden environment file: ${file}`);
+  if (/(^|\/)\.env($|\.)/.test(file) && ![".env.example", "deploy/staging/.env.staging.example"].includes(file)) fail(`Forbidden environment file: ${file}`);
   if (/\.(pem|key|p12|pfx)$/i.test(file)) fail(`Forbidden key material: ${file}`);
   const text = fs.readFileSync(file, "utf8");
   if (/console\.(log|info|warn|error)\([^\n]*(password|sessionToken|transactionToken|tokenPepper|notificationKey|mfaKey|totp|recoveryCodes)/i.test(text)) fail(`Potential secret logging in ${file}`);
@@ -51,7 +51,14 @@ const harness = fs.readFileSync("src/validation/passkey-harness.ts", "utf8");
 for (const required of ["navigator.credentials.create", "navigator.credentials.get", "noindex, nofollow"]) if (!harness.includes(required)) fail(`Passkey validation control missing: ${required}`);
 if (harness.includes("localStorage") || harness.includes("sessionStorage")) fail("Passkey validation harness must not persist session tokens");
 const config = fs.readFileSync("src/config.ts", "utf8");
-if (!config.includes("Passkey validation harness is forbidden in production")) fail("Production harness prohibition missing");
+for (const required of [
+  "Passkey validation harness is allowed only in local, local-compose, or staging",
+  "PHOENIX_REQUIRE_TLS must be true in staging and production",
+  "PHOENIX_OPERATIONS_ENABLED must be true in staging and production",
+  "localhost WebAuthn RP ID is forbidden in staging and production",
+  "password breach screening cannot be disabled in staging and production",
+  "_FILE"
+]) if (!config.includes(required)) fail(`Staging configuration control missing: ${required}`);
 const rotation = fs.readFileSync("scripts/rotate-identity-keys.ts", "utf8");
 const rotationLibrary = fs.readFileSync("src/identity/key-rotation.ts", "utf8");
 for (const required of ["notification rotation key must change", "MFA rotation key must change", "notification and MFA rotation keys must remain independent"]) {
@@ -62,6 +69,16 @@ for (const required of ["validateIdentityEncryptionRotation", "pg_advisory_xact_
 }
 const assurance = fs.readFileSync(".github/workflows/assurance.yml", "utf8");
 for (const required of ["actions/attest@v4", "pg_dump", "pg_restore", "incident:snapshot"]) if (!assurance.includes(required)) fail(`Assurance gate missing: ${required}`);
+
+
+const stagingWorkflow = fs.readFileSync(".github/workflows/staging-foundation.yml", "utf8");
+for (const required of ["Staging Foundation Validation", "npm run staging:preflight", "deploy/staging/compose.yaml", "Prove rendered Compose contains no secret values", "Verify governed repository stayed clean"]) {
+  if (!stagingWorkflow.includes(required)) fail(`Staging foundation workflow control missing: ${required}`);
+}
+const stagingCompose = fs.readFileSync("deploy/staging/compose.yaml", "utf8");
+for (const required of ["PHOENIX_ENV: staging", 'PHOENIX_REQUIRE_TLS: "true"', 'PHOENIX_TRUST_PROXY_HOPS: "1"', "PHOENIX_DATABASE_URL_FILE", "PHOENIX_OPERATIONS_TOKEN_FILE", "read_only: true", "cap_drop:"]) {
+  if (!stagingCompose.includes(required)) fail(`Staging deployment control missing: ${required}`);
+}
 
 const externalEvidence = fs.readFileSync("src/assurance/external-evidence.ts", "utf8");
 for (const required of ["passkey_real_device", "notification_provider_delivery", "key_rotation_exercise", "alert_delivery", "recovery_drill", "incident_response_exercise", "privacy_legal_review", "penetration_test", "forbidden sensitive field", "passed evidence requires an approval", "passed evidence requires at least one redacted artifact"]) {
