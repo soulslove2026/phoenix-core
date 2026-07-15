@@ -83,7 +83,7 @@ if (JSON.stringify(actual) !== JSON.stringify(listed)) {
   fail("FILE_MANIFEST does not exactly match repository files");
 }
 if (manifest.file_count !== listed.length) fail("manifest count incorrect");
-for (const line of read("CHECKSUMS.sha256").trim().split("\n")) {
+for (const line of read("CHECKSUMS.sha256").trim().split(/\r?\n/)) {
   if (!line) continue;
   const match = /^([a-f0-9]{64})  (.+)$/.exec(line);
   if (!match) { fail(`Invalid checksum: ${line}`); continue; }
