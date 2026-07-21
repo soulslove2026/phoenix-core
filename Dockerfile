@@ -15,7 +15,10 @@ COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/migrations ./migrations
-RUN addgroup -S phoenix && adduser -S phoenix -G phoenix
+RUN chmod 0555 /app/migrations \
+    && chmod 0444 /app/migrations/*.sql \
+    && addgroup -S phoenix \
+    && adduser -S phoenix -G phoenix
 USER phoenix
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD node -e "fetch('http://127.0.0.1:3000/v1/system/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
