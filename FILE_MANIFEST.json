@@ -1,6 +1,6 @@
 {
   "repository_version": "3.8.0",
-  "file_count": 127,
+  "file_count": 128,
   "files": [
     ".env.example",
     ".gitattributes",
@@ -10,6 +10,7 @@
     ".github/workflows/codeql.yml",
     ".github/workflows/dependency-review.yml",
     ".github/workflows/external-assurance-controls.yml",
+    ".github/workflows/release-image.yml",
     ".github/workflows/staging-foundation.yml",
     ".gitignore",
     ".nvmrc",
