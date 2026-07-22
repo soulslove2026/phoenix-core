@@ -1,0 +1,286 @@
+name: Release Image
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: release-image-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  validate:
+    name: Validate candidate image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Validate repository constitution
+        run: node scripts/repository-check.mjs
+
+      - name: Resolve validation image
+        id: validation
+        shell: bash
+        run: |
+          echo "tag=phoenix-core:validation-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build candidate image
+        shell: bash
+        run: |
+          docker build             --pull             --label "org.opencontainers.image.revision=${GITHUB_SHA}"             --tag "${{ steps.validation.outputs.tag }}"             .
+
+      - name: Verify candidate runtime hardening
+        shell: bash
+        run: |
+          docker run --rm             --entrypoint sh             "${{ steps.validation.outputs.tag }}"             -c '
+          set -eu
+
+          echo "=== Runtime identity ==="
+          id
+
+          echo "=== Migration permissions ==="
+          stat -c "%A | %a | %U:%G | %n" /app/migrations
+
+          test "$(id -u)" -ne 0
+          test "$(stat -c "%a" /app/migrations)" = "555"
+
+          SQL_COUNT="$(find /app/migrations -maxdepth 1 -type f -name "*.sql" | wc -l)"
+          test "$SQL_COUNT" -gt 0
+
+          for file in /app/migrations/*.sql; do
+            test -f "$file"
+            test "$(stat -c "%a" "$file")" = "444"
+          done
+
+          echo "PASS: candidate runtime hardening verified"
+          '
+
+  publish:
+    name: Publish immutable OCI image
+    needs:
+      - validate
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Validate repository constitution
+        run: node scripts/repository-check.mjs
+
+      - name: Resolve release metadata
+        id: metadata
+        shell: bash
+        run: |
+          IMAGE="${REGISTRY}/${GITHUB_REPOSITORY,,}"
+          VERSION="$(node -p "require('./VERSION.json').version")"
+          TAG="sha-${GITHUB_SHA}"
+          REFERENCE="${IMAGE}:${TAG}"
+
+          {
+            echo "image=${IMAGE}"
+            echo "tag=${TAG}"
+            echo "reference=${REFERENCE}"
+            echo "version=${VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push candidate image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          pull: true
+          platforms: linux/amd64
+          tags: ${{ steps.metadata.outputs.reference }}
+          labels: |
+            org.opencontainers.image.title=Phoenix Core
+            org.opencontainers.image.description=Phoenix Core governed candidate image
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.metadata.outputs.version }}
+          cache-from: type=gha,scope=phoenix-core-release-image
+          cache-to: type=gha,mode=max,scope=phoenix-core-release-image
+          provenance: false
+
+      - name: Validate published digest
+        id: immutable
+        shell: bash
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Invalid OCI digest: $DIGEST" >&2
+            exit 1
+          fi
+
+          IMMUTABLE_REFERENCE="${IMAGE}@${DIGEST}"
+
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "reference=${IMMUTABLE_REFERENCE}" >> "$GITHUB_OUTPUT"
+
+          echo "Immutable reference: ${IMMUTABLE_REFERENCE}"
+
+      - name: Pull published immutable image
+        shell: bash
+        run: |
+          docker pull "${{ steps.immutable.outputs.reference }}"
+
+      - name: Verify published runtime hardening
+        shell: bash
+        run: |
+          docker run --rm             --entrypoint sh             "${{ steps.immutable.outputs.reference }}"             -c '
+          set -eu
+
+          echo "=== Published runtime identity ==="
+          id
+
+          echo "=== Published migration permissions ==="
+          stat -c "%A | %a | %U:%G | %n" /app/migrations
+
+          test "$(id -u)" -ne 0
+          test "$(stat -c "%a" /app/migrations)" = "555"
+
+          SQL_COUNT="$(find /app/migrations -maxdepth 1 -type f -name "*.sql" | wc -l)"
+          test "$SQL_COUNT" -gt 0
+
+          for file in /app/migrations/*.sql; do
+            test -f "$file"
+            test "$(stat -c "%a" "$file")" = "444"
+          done
+
+          echo "PASS: published immutable image verified"
+          '
+
+      - name: Attest published image
+        id: attest
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ steps.metadata.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Generate sanitized release evidence
+        shell: bash
+        env:
+          EVIDENCE_PATH: ${{ runner.temp }}/phoenix-release-image-evidence.json
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          IMAGE_TAG: ${{ steps.metadata.outputs.tag }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          IMMUTABLE_REFERENCE: ${{ steps.immutable.outputs.reference }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const evidence = {
+            schema: "phoenix.release-image-evidence.v1",
+            service: "phoenix-core",
+            version: process.env.VERSION,
+            release_state: "candidate",
+            production_ready: false,
+            commit: process.env.COMMIT_SHA,
+            image: process.env.IMAGE,
+            tag: process.env.IMAGE_TAG,
+            digest: process.env.IMAGE_DIGEST,
+            immutable_reference: process.env.IMMUTABLE_REFERENCE,
+            workflow_run_id: process.env.RUN_ID,
+            workflow_run_attempt: process.env.RUN_ATTEMPT,
+            workflow_run_url: process.env.RUN_URL,
+            attestation_url: process.env.ATTESTATION_URL,
+            generated_at: new Date().toISOString(),
+          };
+
+          fs.writeFileSync(
+            process.env.EVIDENCE_PATH,
+            `${JSON.stringify(evidence, null, 2)}\n`,
+            "utf8",
+          );
+
+          console.log(process.env.EVIDENCE_PATH);
+          NODE
+
+      - name: Upload sanitized release evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: phoenix-release-image-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/phoenix-release-image-evidence.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish workflow summary
+        shell: bash
+        run: |
+          {
+            echo "## Phoenix Release Image"
+            echo
+            echo "- Version: \`${{ steps.metadata.outputs.version }}\`"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Tag: \`${{ steps.metadata.outputs.reference }}\`"
+            echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- Immutable reference:"
+            echo
+            echo '```text'
+            echo "${{ steps.immutable.outputs.reference }}"
+            echo '```'
+            echo
+            echo "- Attestation: ${{ steps.attest.outputs.attestation-url }}"
+            echo "- Production ready: \`false\`"
+          } >> "$GITHUB_STEP_SUMMARY"

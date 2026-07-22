@@ -35,7 +35,7 @@ const required = [
   "assurance/README.md", "assurance/evidence/README.md", "assurance/evidence/.gitignore",
   "FILE_MANIFEST.json", "CHECKSUMS.sha256", ".github/workflows/ci.yml", ".github/workflows/assurance.yml",
   ".github/workflows/codeql.yml", ".github/workflows/dependency-review.yml",
-  ".github/workflows/external-assurance-controls.yml", ".github/workflows/staging-foundation.yml", ".github/dependabot.yml"
+  ".github/workflows/external-assurance-controls.yml", ".github/workflows/release-image.yml", ".github/workflows/staging-foundation.yml", ".github/dependabot.yml"
 ];
 for (const file of required) if (!fs.existsSync(file)) fail(`Missing required file: ${file}`);
 if (process.exitCode) process.exit();
