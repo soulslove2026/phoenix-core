@@ -13,6 +13,15 @@ const errorSchema = {
   },
 } as const;
 
+const authenticatedRateLimitConfig = {
+  config: {
+    rateLimit: {
+      max: 100,
+      timeWindow: "15 minutes",
+    },
+  },
+} as const;
+
 const organizationSchema = {
   type: "object",
   additionalProperties: false,
@@ -146,6 +155,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.get(
     "/organizations",
     {
+      ...authenticatedRateLimitConfig,
       schema: {
         security: bearerSecurity,
         response: {
@@ -174,6 +184,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.get(
     "/organizations/:organizationId",
     {
+      ...authenticatedRateLimitConfig,
       schema: {
         security: bearerSecurity,
         params: {
@@ -213,6 +224,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.get(
     "/organizations/:organizationId/members",
     {
+      ...authenticatedRateLimitConfig,
       schema: {
         security: bearerSecurity,
         params: {
