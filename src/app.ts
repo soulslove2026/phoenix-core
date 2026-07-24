@@ -15,6 +15,9 @@ import { HibpPasswordBreachChecker } from "./identity/password-breach.js";
 import { IdentityObservabilityRepository } from "./operations/identity-observability.js";
 import { operationsRoutes } from "./operations/routes.js";
 import { passkeyValidationHarness } from "./validation/passkey-harness.js";
+import { PostgresPlatformRepository } from "./platform/repository.js";
+import { PlatformService } from "./platform/service.js";
+import { platformRoutes } from "./platform/routes.js";
 
 declare module "fastify" { interface FastifyInstance { config: AppConfig } }
 
@@ -47,7 +50,8 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
   if(app.database.pool){
     if(!config.identityTokenPepper||!config.identityNotificationKey||!config.identityPrivacyKey||!config.identityMfaKey)throw new Error("identity secrets are required");
     const phaseBRepository = new PostgresPhaseBIdentityRepository(app.database.pool);
-    const service = new IdentityService(new PostgresIdentityRepository(app.database.pool),{
+    const identityRepository = new PostgresIdentityRepository(app.database.pool);
+    const service = new IdentityService(identityRepository,{
       sessionAbsoluteTtlSeconds:config.identitySessionAbsoluteTtlSeconds,
       sessionIdleTtlSeconds:config.identitySessionIdleTtlSeconds,
       verificationTtlSeconds:config.identityVerificationTtlSeconds,
@@ -68,6 +72,7 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
       }
     });
     await app.register(identityRoutes,{prefix:"/v1/identity",service,limiter:new PostgresIdentityRateLimiter(app.database.pool),privacyKey:config.identityPrivacyKey,rateLimit:{windowSeconds:config.identityRateLimitWindowSeconds,registerMaximum:config.identityRegisterMaxAttempts,loginMaximum:config.identityLoginMaxAttempts,actionRequestMaximum:config.identityActionRequestMaxAttempts,actionConfirmMaximum:config.identityActionConfirmMaxAttempts}});
+    await app.register(platformRoutes,{prefix:"/v1/platform",identityService:service,platformService:new PlatformService(new PostgresPlatformRepository(app.database.pool))});
     if(config.operationsEnabled&&config.operationsToken) await app.register(operationsRoutes,{prefix:"/v1/operations",repository:new IdentityObservabilityRepository(app.database.pool),token:config.operationsToken,observationWindowMinutes:config.operationsObservationWindowMinutes,staleLockSeconds:config.operationsStaleLockSeconds,maxDeadLetters:config.operationsMaxDeadLetters,maxStaleLocks:config.operationsMaxStaleLocks,maxDeniedEvents:config.operationsMaxDeniedEvents});
   }
   app.setNotFoundHandler(async(request,reply)=>reply.code(404).send({error:"not_found",requestId:request.id}));

@@ -42,3 +42,8 @@ The staging preflight proves configuration posture before deployment. The remote
 ## v3.9.0 assurance operator boundary
 
 The Assurance Operator is an orchestration layer over the existing external-evidence schema. It does not create or approve real evidence. It validates sanitized records, produces deterministic assessment reports outside the repository, and preserves fail-closed completion semantics.
+
+
+## v4.0.0 multi-tenant platform boundary
+
+The platform bounded context owns organizations, memberships, tenant context, idempotency records, and platform audit events. Tenant authorization is derived from the authenticated identity session and enforced again in repository queries and transactions. A caller cannot gain access by supplying an organization identifier alone.

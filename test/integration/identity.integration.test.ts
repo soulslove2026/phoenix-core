@@ -184,7 +184,7 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
   });
   assert.equal(operationsHealth.statusCode, 200);
   assert.equal(operationsHealth.json().status, "healthy");
-  assert.equal(operationsHealth.json().migrationCount, 4);
+  assert.equal(operationsHealth.json().migrationCount, 5);
 
   const operationsMetrics = await app.inject({
     method: "GET",
