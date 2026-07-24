@@ -45,6 +45,7 @@
     "assurance:operator:dev": "tsx scripts/assurance-operator.ts"
   },
   "dependencies": {
+    "@fastify/rate-limit": "11.1.0",
     "@fastify/swagger": "9.8.0",
     "@fastify/swagger-ui": "6.1.0",
     "@simplewebauthn/server": "13.3.2",

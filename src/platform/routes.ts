@@ -166,6 +166,12 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
     "/organizations",
     {
       preHandler: limited("organizations_create", options.rateLimit.writeMaximum),
+      config: {
+        rateLimit: {
+          max: options.rateLimit.writeMaximum,
+          timeWindow: options.rateLimit.windowSeconds * 1000,
+        },
+      },
       schema: {
         security: bearerSecurity,
         headers: {
@@ -221,6 +227,12 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
     "/organizations",
     {
       preHandler: limited("organizations_list", options.rateLimit.readMaximum),
+      config: {
+        rateLimit: {
+          max: options.rateLimit.readMaximum,
+          timeWindow: options.rateLimit.windowSeconds * 1000,
+        },
+      },
       schema: {
         security: bearerSecurity,
         response: {
@@ -251,6 +263,12 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
     "/organizations/:organizationId",
     {
       preHandler: limited("organization_read", options.rateLimit.readMaximum),
+      config: {
+        rateLimit: {
+          max: options.rateLimit.readMaximum,
+          timeWindow: options.rateLimit.windowSeconds * 1000,
+        },
+      },
       schema: {
         security: bearerSecurity,
         params: {
@@ -292,6 +310,12 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
     "/organizations/:organizationId/members",
     {
       preHandler: limited("memberships_list", options.rateLimit.readMaximum),
+      config: {
+        rateLimit: {
+          max: options.rateLimit.readMaximum,
+          timeWindow: options.rateLimit.windowSeconds * 1000,
+        },
+      },
       schema: {
         security: bearerSecurity,
         params: {
@@ -331,6 +355,12 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
     "/organizations/:organizationId/members",
     {
       preHandler: limited("membership_create", options.rateLimit.writeMaximum),
+      config: {
+        rateLimit: {
+          max: options.rateLimit.writeMaximum,
+          timeWindow: options.rateLimit.windowSeconds * 1000,
+        },
+      },
       schema: {
         security: bearerSecurity,
         params: {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Fastify, { LogController, type FastifyInstance } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { loadConfig, type AppConfig } from "./config.js";
@@ -70,6 +71,14 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
         totpIssuer:config.identityTotpIssuer,
         webauthnChallengeTtlSeconds:config.identityWebauthnChallengeTtlSeconds
       }
+    });
+    await app.register(rateLimit,{
+      global:false,
+      skipOnError:false,
+      errorResponseBuilder:(request)=>({
+        error:"rate_limit_exceeded",
+        requestId:request.id
+      })
     });
     const limiter = new PostgresIdentityRateLimiter(app.database.pool);
     await app.register(identityRoutes,{prefix:"/v1/identity",service,limiter:limiter,privacyKey:config.identityPrivacyKey,rateLimit:{windowSeconds:config.identityRateLimitWindowSeconds,registerMaximum:config.identityRegisterMaxAttempts,loginMaximum:config.identityLoginMaxAttempts,actionRequestMaximum:config.identityActionRequestMaxAttempts,actionConfirmMaximum:config.identityActionConfirmMaxAttempts}});

@@ -281,4 +281,18 @@ test("every protected platform route declares governed rate limiting", async () 
     true,
   );
   assert.equal(source.includes("authenticatedRateLimitConfig"), false);
+  assert.equal(
+    (source.match(/config:\s*\{\s*rateLimit:\s*\{/gu) ?? []).length,
+    protectedRoutes.length,
+  );
+
+  const appSource = await readFile(
+    new URL("../src/app.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(appSource, /from "@fastify\/rate-limit"/u);
+  assert.match(
+    appSource,
+    /await app\.register\(rateLimit,\s*\{\s*global:\s*false,/su,
+  );
 });
