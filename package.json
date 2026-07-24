@@ -1,8 +1,8 @@
 {
   "name": "@phoenix/core",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "private": true,
-  "description": "Phoenix governed staging assurance foundation for Identity Slice 2 Phase C",
+  "description": "Phoenix governed assurance automation and operator foundation for Identity Slice 2 Phase C",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
@@ -40,7 +40,9 @@
     "staging:preflight": "node dist/scripts/staging-preflight.js",
     "staging:preflight:dev": "tsx scripts/staging-preflight.ts",
     "staging:smoke": "node dist/scripts/staging-smoke.js",
-    "staging:smoke:dev": "tsx scripts/staging-smoke.ts"
+    "staging:smoke:dev": "tsx scripts/staging-smoke.ts",
+    "assurance:operator": "node dist/scripts/assurance-operator.js",
+    "assurance:operator:dev": "tsx scripts/assurance-operator.ts"
   },
   "dependencies": {
     "@fastify/swagger": "9.8.0",

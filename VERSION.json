@@ -1,12 +1,12 @@
 {
-  "version": "3.8.0",
-  "release": "Phoenix Identity Slice 2 Phase C — Staging Assurance Foundation Release 1, CI Reconciliation R2",
-  "release_date": "2026-07-15",
+  "version": "3.9.0",
+  "release": "Phoenix Core 3.9.0 - Assurance Automation and Operator Release 1",
+  "release_date": "2026-07-23",
   "status": "candidate",
   "production_ready": false,
-  "scope": "Governed HTTPS staging configuration, secret-file loading, immutable deployment identity, deployment templates, preflight validation, and sanitized smoke evidence",
-  "previous_verified_release": "3.7.1-evidence-provenance-reconciliation-workflow-verification",
-  "previous_release": "3.7.1",
+  "scope": "Governed one-command external assurance assessment, sanitized operator reporting, deterministic recommendations, and CI operator verification",
+  "previous_verified_release": "3.8.0-staging-assurance-foundation",
+  "previous_release": "3.8.0",
   "internal_workflow_gates": "verification-required",
   "external_assurance_state": "incomplete",
   "staging_foundation_state": "candidate",
@@ -27,6 +27,7 @@
     "Documentation Check",
     "Documentation Integrity"
   ],
-  "release_revision": "r2-ci-reconciliation",
-  "ci_reconciliation_state": "local-static-and-unit-verified; github-workflow-verification-required"
+  "release_revision": "r1",
+  "ci_reconciliation_state": "local-static-and-unit-verified; github-workflow-verification-required",
+  "assurance_operator_state": "candidate"
 }

@@ -1,1 +1,1 @@
-export const PHOENIX_VERSION = "3.8.0" as const;
+export const PHOENIX_VERSION = "3.9.0" as const;

@@ -1,8 +1,8 @@
 # Phoenix Core
 
-**Version:** `3.8.0`  
-**Milestone:** Identity Slice 2 Phase C — Staging Assurance Foundation Release 1  
-**Status:** Candidate  
+**Version:** `3.9.0`
+**Milestone:** Assurance Automation and Operator Release 1
+**Status:** Candidate
 **Production ready:** No
 
 Phoenix Core is the Node.js 24, TypeScript, Fastify, and PostgreSQL implementation of the Phoenix modular monolith.
@@ -48,3 +48,7 @@ The staging Passkey harness is disabled by default and may be enabled only durin
 ## Next gate
 
 Deploy the verified immutable image behind a real HTTPS staging domain, run preflight and smoke validation, complete real-device Passkey registration and authentication, sanitize the evidence, and validate it as `environment: staging`.
+
+## Assurance Operator 3.9.0
+
+Version 3.9.0 adds a one-command governed operator that validates sanitized external evidence, creates a deterministically ordered assessment report outside the repository, and can fail closed when complete qualifying evidence is required. See `docs/ASSURANCE_OPERATOR.md`.
