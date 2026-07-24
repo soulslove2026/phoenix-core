@@ -42,7 +42,7 @@ test("database identity config requires separate strong secrets", () => {
     PHOENIX_IDENTITY_PRIVACY_KEY: secret,
     PHOENIX_IDENTITY_MFA_KEY: secret
   });
-  assert.equal(config.version, "3.8.0");
+  assert.equal(config.version, "3.9.0");
   assert.equal(config.identitySessionIdleTtlSeconds, 43_200);
   assert.equal(config.identityWebauthnRpId, "localhost");
 });

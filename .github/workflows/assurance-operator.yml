@@ -1,0 +1,45 @@
+name: Assurance Operator
+
+on:
+  pull_request:
+    paths:
+      - "src/assurance/**"
+      - "scripts/assurance-operator.ts"
+      - "test/assurance-operator.test.ts"
+      - "assurance/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/assurance-operator.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  operator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Exercise operator against blocked templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="$(mktemp -d)"
+          report_dir="${evidence_dir}-report"
+          rm -rf "${evidence_dir}"
+          npm run build
+          npm run assurance:evidence:init -- "${evidence_dir}"
+          npm run assurance:operator -- "${evidence_dir}" "${report_dir}"
+          test -f "${report_dir}/operator-report.json"
+          test -f "${report_dir}/operator-summary.txt"
+          grep -q '"complete": false' "${report_dir}/operator-report.json"
