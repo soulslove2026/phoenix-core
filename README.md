@@ -1,7 +1,7 @@
 # Phoenix Core
 
-**Version:** `3.9.0`
-**Milestone:** Assurance Automation and Operator Release 1
+**Version:** `4.0.0`
+**Milestone:** Multi-Tenant Platform Foundation Release 1
 **Status:** Candidate
 **Production ready:** No
 
@@ -52,3 +52,8 @@ Deploy the verified immutable image behind a real HTTPS staging domain, run pref
 ## Assurance Operator 3.9.0
 
 Version 3.9.0 adds a one-command governed operator that validates sanitized external evidence, creates a deterministically ordered assessment report outside the repository, and can fail closed when complete qualifying evidence is required. See `docs/ASSURANCE_OPERATOR.md`.
+
+
+## Platform Foundation 4.0.0
+
+Version 4.0.0 introduces governed organizations, memberships, authenticated tenant context, repository-enforced isolation, idempotent organization creation, and platform audit events. See `docs/PLATFORM_FOUNDATION.md`.

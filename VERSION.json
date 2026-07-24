@@ -1,12 +1,12 @@
 {
-  "version": "3.9.0",
-  "release": "Phoenix Core 3.9.0 - Assurance Automation and Operator Release 1",
-  "release_date": "2026-07-23",
+  "version": "4.0.0",
+  "release": "Phoenix Platform 4.0.0 - Multi-Tenant Platform Foundation Release 1",
+  "release_date": "2026-07-24",
   "status": "candidate",
   "production_ready": false,
-  "scope": "Governed one-command external assurance assessment, sanitized operator reporting, deterministic recommendations, and CI operator verification",
-  "previous_verified_release": "3.8.0-staging-assurance-foundation",
-  "previous_release": "3.8.0",
+  "scope": "Governed organizations, memberships, authenticated tenant context, repository-enforced isolation, idempotent creation, audit events, and initial platform APIs",
+  "previous_verified_release": "3.9.0-assurance-automation-and-operator-r1",
+  "previous_release": "3.9.0",
   "internal_workflow_gates": "verification-required",
   "external_assurance_state": "incomplete",
   "staging_foundation_state": "candidate",
@@ -27,7 +27,9 @@
     "Documentation Check",
     "Documentation Integrity"
   ],
-  "release_revision": "r1",
-  "ci_reconciliation_state": "local-static-and-unit-verified; github-workflow-verification-required",
-  "assurance_operator_state": "candidate"
+  "release_revision": "r1-slice-a",
+  "ci_reconciliation_state": "local-verification-required; github-workflow-verification-required",
+  "assurance_operator_state": "candidate",
+  "platform_foundation_state": "candidate",
+  "tenant_isolation_state": "unit-verified; database-integration-required"
 }

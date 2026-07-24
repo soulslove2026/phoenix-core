@@ -32,7 +32,7 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
     identity_users cascade`);
 
   const migrationCount = await pool.query<{ count: string }>("select count(*)::text count from phoenix_schema_migrations");
-  assert.equal(Number(migrationCount.rows[0]?.count ?? 0), 4);
+  assert.equal(Number(migrationCount.rows[0]?.count ?? 0), 5);
 
   const operationsToken = Buffer.alloc(32, 9).toString("base64url");
   const app = await buildApp(loadConfig({
@@ -184,7 +184,7 @@ test("Phase B verification, TOTP, recovery codes, sessions, and audit flow", { s
   });
   assert.equal(operationsHealth.statusCode, 200);
   assert.equal(operationsHealth.json().status, "healthy");
-  assert.equal(operationsHealth.json().migrationCount, 4);
+  assert.equal(operationsHealth.json().migrationCount, 5);
 
   const operationsMetrics = await app.inject({
     method: "GET",
