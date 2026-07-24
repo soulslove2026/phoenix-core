@@ -103,7 +103,7 @@ jobs:
           const pool = new pg.Pool({ connectionString: process.env.PHOENIX_DATABASE_URL, max: 1 });
           try {
             const result = await pool.query("select count(*)::int as count from phoenix_schema_migrations");
-            if (result.rows[0]?.count !== 4) throw new Error(`expected 4 migrations, found ${result.rows[0]?.count}`);
+            if (result.rows[0]?.count !== 5) throw new Error(`expected 5 migrations, found ${result.rows[0]?.count}`);
           } finally {
             await pool.end();
           }
