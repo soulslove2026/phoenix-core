@@ -83,3 +83,28 @@ test("staging smoke proves deployment identity, readiness, security headers, har
 test("staging smoke rejects insecure base URLs", async () => {
   await assert.rejects(() => smokeStaging("http://staging.example.test", { expectPasskeyHarness: false }, fetch));
 });
+test("recovery verifier matches the governed migration inventory", async () => {
+  const { readFile, readdir } = await import("node:fs/promises");
+
+  const migrations = (await readdir(
+    new URL("../migrations/", import.meta.url),
+  )).filter((name) => /^\d{3}_.+\.sql$/u.test(name));
+
+  const source = await readFile(
+    new URL("../scripts/verify-restored-database.ts", import.meta.url),
+    "utf8",
+  );
+
+  const expected = migrations.length;
+  assert.match(
+    source,
+    new RegExp(
+      `migration\\.rows\\[0\\]\\?\\.count \\?\\? 0\\) !== ${expected}`,
+      "u",
+    ),
+  );
+  assert.match(
+    source,
+    new RegExp(`migrationCount:\\s*${expected}`, "u"),
+  );
+});
