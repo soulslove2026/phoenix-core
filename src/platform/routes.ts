@@ -1,7 +1,9 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { IdentityError, type IdentityService } from "../identity/service.js";
 import { PlatformError, type PlatformService } from "./service.js";
 import type { AuthenticatedActor } from "./types.js";
+import type { IdentityRateLimiter } from "../identity/distributed-rate-limit.js";
+import { privacyHash } from "../identity/token-crypto.js";
 
 const errorSchema = {
   type: "object",
@@ -13,14 +15,6 @@ const errorSchema = {
   },
 } as const;
 
-const authenticatedRateLimitConfig = {
-  config: {
-    rateLimit: {
-      max: 100,
-      timeWindow: "15 minutes",
-    },
-  },
-} as const;
 
 const organizationSchema = {
   type: "object",
@@ -73,6 +67,13 @@ const bearerSecurity = [{ bearerAuth: [] }] as const;
 type Options = Readonly<{
   identityService: IdentityService;
   platformService: PlatformService;
+  limiter: IdentityRateLimiter;
+  privacyKey: string;
+  rateLimit: Readonly<{
+    windowSeconds: number;
+    readMaximum: number;
+    writeMaximum: number;
+  }>;
 }>;
 
 function bearer(value: string | undefined): string {
@@ -99,9 +100,72 @@ async function actor(
 }
 
 export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) => {
+  const limited = (
+    scope: string,
+    maximum: number,
+  ) => async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<FastifyReply | void> => {
+    const authorization = String(request.headers.authorization ?? "none");
+    const subject = privacyHash(authorization, options.privacyKey);
+    const keys = [
+      {
+        key: privacyHash(
+          `platform:${scope}:pair:${request.ip}:${subject}`,
+          options.privacyKey,
+        ),
+        maximum,
+      },
+      {
+        key: privacyHash(
+          `platform:${scope}:ip:${request.ip}`,
+          options.privacyKey,
+        ),
+        maximum: maximum * 10,
+      },
+      {
+        key: privacyHash(
+          `platform:${scope}:subject:${subject}`,
+          options.privacyKey,
+        ),
+        maximum: maximum * 5,
+      },
+    ];
+
+    const decisions = await Promise.all(
+      keys.map((item) =>
+        options.limiter.consume(
+          item.key,
+          item.maximum,
+          options.rateLimit.windowSeconds,
+        ),
+      ),
+    );
+    const denied = decisions.find((decision) => !decision.allowed);
+    const remaining = Math.min(
+      ...decisions.map((decision) => decision.remaining),
+    );
+
+    reply
+      .header("x-ratelimit-limit", maximum)
+      .header("x-ratelimit-remaining", Math.max(0, remaining));
+
+    if (denied) {
+      reply.header(
+        "retry-after",
+        Math.max(...decisions.map((decision) => decision.retryAfterSeconds)),
+      );
+      return reply
+        .code(429)
+        .send({ error: "rate_limit_exceeded", requestId: request.id });
+    }
+  };
+
   app.post(
     "/organizations",
     {
+      preHandler: limited("organizations_create", options.rateLimit.writeMaximum),
       schema: {
         security: bearerSecurity,
         headers: {
@@ -138,6 +202,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
           400: errorSchema,
           401: errorSchema,
           409: errorSchema,
+          429: errorSchema,
         },
       },
     },
@@ -155,7 +220,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.get(
     "/organizations",
     {
-      ...authenticatedRateLimitConfig,
+      preHandler: limited("organizations_list", options.rateLimit.readMaximum),
       schema: {
         security: bearerSecurity,
         response: {
@@ -171,6 +236,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
             },
           },
           401: errorSchema,
+          429: errorSchema,
         },
       },
     },
@@ -184,7 +250,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.get(
     "/organizations/:organizationId",
     {
-      ...authenticatedRateLimitConfig,
+      preHandler: limited("organization_read", options.rateLimit.readMaximum),
       schema: {
         security: bearerSecurity,
         params: {
@@ -206,6 +272,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
           },
           401: errorSchema,
           404: errorSchema,
+          429: errorSchema,
         },
       },
     },
@@ -224,7 +291,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.get(
     "/organizations/:organizationId/members",
     {
-      ...authenticatedRateLimitConfig,
+      preHandler: limited("memberships_list", options.rateLimit.readMaximum),
       schema: {
         security: bearerSecurity,
         params: {
@@ -248,6 +315,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
           },
           401: errorSchema,
           404: errorSchema,
+          429: errorSchema,
         },
       },
     },
@@ -262,6 +330,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
   app.post(
     "/organizations/:organizationId/members",
     {
+      preHandler: limited("membership_create", options.rateLimit.writeMaximum),
       schema: {
         security: bearerSecurity,
         params: {
@@ -293,6 +362,7 @@ export const platformRoutes: FastifyPluginAsync<Options> = async (app, options) 
           401: errorSchema,
           404: errorSchema,
           409: errorSchema,
+          429: errorSchema,
         },
       },
     },

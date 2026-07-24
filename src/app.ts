@@ -71,8 +71,9 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<Fastif
         webauthnChallengeTtlSeconds:config.identityWebauthnChallengeTtlSeconds
       }
     });
-    await app.register(identityRoutes,{prefix:"/v1/identity",service,limiter:new PostgresIdentityRateLimiter(app.database.pool),privacyKey:config.identityPrivacyKey,rateLimit:{windowSeconds:config.identityRateLimitWindowSeconds,registerMaximum:config.identityRegisterMaxAttempts,loginMaximum:config.identityLoginMaxAttempts,actionRequestMaximum:config.identityActionRequestMaxAttempts,actionConfirmMaximum:config.identityActionConfirmMaxAttempts}});
-    await app.register(platformRoutes,{prefix:"/v1/platform",identityService:service,platformService:new PlatformService(new PostgresPlatformRepository(app.database.pool))});
+    const limiter = new PostgresIdentityRateLimiter(app.database.pool);
+    await app.register(identityRoutes,{prefix:"/v1/identity",service,limiter:limiter,privacyKey:config.identityPrivacyKey,rateLimit:{windowSeconds:config.identityRateLimitWindowSeconds,registerMaximum:config.identityRegisterMaxAttempts,loginMaximum:config.identityLoginMaxAttempts,actionRequestMaximum:config.identityActionRequestMaxAttempts,actionConfirmMaximum:config.identityActionConfirmMaxAttempts}});
+    await app.register(platformRoutes,{prefix:"/v1/platform",identityService:service,platformService:new PlatformService(new PostgresPlatformRepository(app.database.pool)),limiter,privacyKey:config.identityPrivacyKey,rateLimit:{windowSeconds:config.identityRateLimitWindowSeconds,readMaximum:config.identityActionRequestMaxAttempts,writeMaximum:config.identityActionConfirmMaxAttempts}});
     if(config.operationsEnabled&&config.operationsToken) await app.register(operationsRoutes,{prefix:"/v1/operations",repository:new IdentityObservabilityRepository(app.database.pool),token:config.operationsToken,observationWindowMinutes:config.operationsObservationWindowMinutes,staleLockSeconds:config.operationsStaleLockSeconds,maxDeadLetters:config.operationsMaxDeadLetters,maxStaleLocks:config.operationsMaxStaleLocks,maxDeniedEvents:config.operationsMaxDeniedEvents});
   }
   app.setNotFoundHandler(async(request,reply)=>reply.code(404).send({error:"not_found",requestId:request.id}));

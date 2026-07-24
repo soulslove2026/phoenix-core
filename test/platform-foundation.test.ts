@@ -249,3 +249,36 @@ test("organization lists are scoped to the authenticated actor", async () => {
   });
   assert.equal((await service.listOrganizations(actor(memberId))).length, 1);
 });
+
+
+test("every protected platform route declares governed rate limiting", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(
+    new URL("../src/platform/routes.ts", import.meta.url),
+    "utf8",
+  );
+
+  const protectedRoutes = [
+    ["post", "/organizations"],
+    ["get", "/organizations"],
+    ["get", "/organizations/:organizationId"],
+    ["get", "/organizations/:organizationId/members"],
+    ["post", "/organizations/:organizationId/members"],
+  ] as const;
+
+  for (const [method, path] of protectedRoutes) {
+    const escaped = path.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const expression = new RegExp(
+      `app\\.${method}\\(\\s*"${escaped}",\\s*\\{\\s*preHandler:\\s*limited\\(`,
+      "su",
+    );
+    assert.match(source, expression, `${method.toUpperCase()} ${path}`);
+  }
+
+  assert.equal(
+    (source.match(/429:\s*errorSchema/gu) ?? []).length >=
+      protectedRoutes.length,
+    true,
+  );
+  assert.equal(source.includes("authenticatedRateLimitConfig"), false);
+});
